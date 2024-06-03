@@ -1,2 +1,2 @@
-# features-trading-cardano
-Features trading contract on Cardano 
+# futures-trading-cardano
+Futures trading contract on Cardano 
