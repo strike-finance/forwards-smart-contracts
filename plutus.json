@@ -1,0 +1,14 @@
+{
+  "preamble": {
+    "title": "shan/features",
+    "description": "Aiken contracts for project 'shan/features'",
+    "version": "0.0.0",
+    "plutusVersion": "v2",
+    "compiler": {
+      "name": "Aiken",
+      "version": "v1.0.25-alpha+4e8042f"
+    },
+    "license": "Apache-2.0"
+  },
+  "validators": []
+}
