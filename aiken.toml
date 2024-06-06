@@ -1,11 +1,11 @@
-name = "shan/features"
+name = "shan/futures"
 version = "0.0.0"
 license = "Apache-2.0"
-description = "Aiken contracts for project 'shan/features'"
+description = "Aiken contracts for project 'shan/futures'"
 
 [repository]
 user = "shan"
-project = "features"
+project = "futures"
 platform = "github"
 
 [[dependencies]]

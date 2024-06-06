@@ -1,7 +1,7 @@
 {
   "preamble": {
-    "title": "shan/features",
-    "description": "Aiken contracts for project 'shan/features'",
+    "title": "shan/futures",
+    "description": "Aiken contracts for project 'shan/futures'",
     "version": "0.0.0",
     "plutusVersion": "v2",
     "compiler": {
