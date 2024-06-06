@@ -17,6 +17,7 @@ pub type FeatureDatum {
   issuer_address_hash: AddressHash,
   issuer_bech32_address: ByteArray,
   locked_asset: AssetClass,
+  locked_asset_amount: Int,
   to_asset: AssetClass,
   to_asset_amount: Int,
   exercise_contract_date: POSIXTime,
@@ -30,4 +31,9 @@ pub type ConsumeFeatureDatum {
   asset_amount: Int,
   exercise_contract_date: POSIXTime,
   cancellation_fee: Int,
+}
+
+pub type ObligeeInfo {
+  obligee_address_hash: AddressHash,
+  obligee_bech32_address: ByteArray,
 }

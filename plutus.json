@@ -10,5 +10,160 @@
     },
     "license": "Apache-2.0"
   },
-  "validators": []
+  "validators": [
+    {
+      "title": "offer_feature_contract.spend",
+      "datum": {
+        "title": "datum",
+        "schema": {
+          "$ref": "#/definitions/types~1FeatureDatum"
+        }
+      },
+      "redeemer": {
+        "title": "redeemer",
+        "schema": {
+          "$ref": "#/definitions/offer_feature_contract~1Redeemer"
+        }
+      },
+      "parameters": [
+        {
+          "title": "consume_feature_validator",
+          "schema": {
+            "$ref": "#/definitions/ByteArray"
+          }
+        }
+      ],
+      "compiledCode": "5905c6010000323232323232322322323232232322533300b3232533300d3009300e375400226646464646464646464646464464646464646464a666042603a60446ea80044c8c94ccc08cc07cc090dd500089929998120050a9998120038a99981200188008a5014a02940cdc39998059bab3016302537546050604a6ea8004dd7180c18129baa3012302537540086eb8c058c094dd5180918129baa004375a601e604a6ea801058cc03001c8c94ccc090c020c094dd50008991919baf002007300e0013029302637540022c6024604a6ea8004cdc39998049bab301430233754604c60466ea8004dd7180b18119baa3010302337540066eb8c050c08cdd5180818119baa003375a601a60466ea800c58cc0280148c94ccc088c018c08cdd50008991919baf002006300c0013027302437540022c602060466ea8004c028cc08cc050c084dd500319811980918109baa00633023300e3021375403866046601660426ea8070cc08cc034c084dd500e19811980618109baa01c4bd70180499811180998101baa01b33022301130203754036660446046604860486048604860406ea806ccc088c08cc090c090c090c090c090c080dd500d99811180618101baa01b33022300b3020375403697ae03001300d002370e9002198069bac300a301d37546020603a6ea80448c94ccc074c054c078dd5000899b8f01b375c6044603e6ea80045281808980f1baa3011301e375400260246014660186eb0c03cc070dd51807980e1baa0102533301b3013301c37546020603a6ea8c040c074dd51807180e9baa00114a22940888c94ccc070c050c074dd50008a400026eb4c084c078dd500099299980e180a180e9baa00114c0103d87a80001323300100137566044603e6ea8008894ccc084004530103d87a8000132323253330213371e00e6eb8c08800c4c030cc094dd4000a5eb804cc014014008dd698110011812801181180099198008008021129998100008a6103d87a8000132323253330203371e00e6eb8c08400c4c02ccc090dd3000a5eb804cc014014008dd59810801181200118110009299980c180a180c9baa00113232323232323232323232325333027302a002132498c07c01c58dd6981400098140011bad30260013026002375a60480026048004604400260440046eb8c080004c080008dd7180f000980d1baa0011622323300100100322533301d00114c0103d87a800013232533301c300500213007330200024bd700998020020009810801180f8009ba5480008c068c06cc06cc06c0048c064c068c068c068c068c068c068c0680048c060c064c064c064c064c064c0640048c05cc060c060004c004004894ccc05000452000133700900119801001180b80091191980080080191299980a8008a5eb804c8c94ccc050c0140084cc060008cc0100100044cc010010004c064008c05c0048c04cc050004c048c03cdd500089991191980080080191299980a0008a5013253330123371e6eb8c05c008010528899801801800980b8009bac301230133013301330133013301330133013300f37546004601e6ea800cdd7180118079baa00a3001300e375400a4602200229309b2b2999804980298051baa00213232533300e3011002132498c94ccc030c0200044c8c94ccc044c0500084c926533300e300a300f3754002264646464a66602a60300042930b1bae30160013016002375c602800260206ea80045858c048004c038dd50010a99980618020008a99980798071baa00214985858c030dd50008b180780098059baa00216370e90012999803180118039baa0031323232323232323232323232323232325333019301c00213232498c048020c04402c58dd6980d000980d0011bad30180013018002375a602c002602c004602800260280046eb4c048004c048008c040004c040008dd7180700098070011bae300c001300837540062c4a66600c6004600e6ea80044c8c8c8c94ccc034c04000852616375c601c002601c0046eb8c030004c020dd50008b1b8748000dd7000ab9a5573aaae7955cfaba05742ae881",
+      "hash": "67664fee3ad5adda12b49f379e84c544bf376cbde362c316d3a549e5"
+    }
+  ],
+  "definitions": {
+    "ByteArray": {
+      "dataType": "bytes"
+    },
+    "Int": {
+      "dataType": "integer"
+    },
+    "offer_feature_contract/LoanRedeemer": {
+      "title": "LoanRedeemer",
+      "anyOf": [
+        {
+          "title": "AcceptFeatureContract",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "$ref": "#/definitions/types~1ObligeeInfo"
+            }
+          ]
+        },
+        {
+          "title": "CancelFeatureContract",
+          "dataType": "constructor",
+          "index": 1,
+          "fields": []
+        }
+      ]
+    },
+    "offer_feature_contract/Redeemer": {
+      "title": "Redeemer",
+      "anyOf": [
+        {
+          "title": "Redeemer",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "action",
+              "$ref": "#/definitions/offer_feature_contract~1LoanRedeemer"
+            }
+          ]
+        }
+      ]
+    },
+    "types/AssetClass": {
+      "title": "AssetClass",
+      "anyOf": [
+        {
+          "title": "AssetClass",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "policy_id",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "asset_name",
+              "$ref": "#/definitions/ByteArray"
+            }
+          ]
+        }
+      ]
+    },
+    "types/FeatureDatum": {
+      "title": "FeatureDatum",
+      "anyOf": [
+        {
+          "title": "FeatureDatum",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "issuer_address_hash",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "issuer_bech32_address",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "locked_asset",
+              "$ref": "#/definitions/types~1AssetClass"
+            },
+            {
+              "title": "locked_asset_amount",
+              "$ref": "#/definitions/Int"
+            },
+            {
+              "title": "to_asset",
+              "$ref": "#/definitions/types~1AssetClass"
+            },
+            {
+              "title": "to_asset_amount",
+              "$ref": "#/definitions/Int"
+            },
+            {
+              "title": "exercise_contract_date",
+              "$ref": "#/definitions/Int"
+            },
+            {
+              "title": "cancellation_fee",
+              "$ref": "#/definitions/Int"
+            }
+          ]
+        }
+      ]
+    },
+    "types/ObligeeInfo": {
+      "title": "ObligeeInfo",
+      "anyOf": [
+        {
+          "title": "ObligeeInfo",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "obligee_address_hash",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "obligee_bech32_address",
+              "$ref": "#/definitions/ByteArray"
+            }
+          ]
+        }
+      ]
+    }
+  }
 }
