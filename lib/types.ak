@@ -21,7 +21,6 @@ pub type FuturesDatum {
   to_asset: AssetClass,
   to_asset_amount: Int,
   exercise_contract_date: POSIXTime,
-  cancellation_fee: Int,
 }
 
 pub type ConsumeFuturesDatum {
