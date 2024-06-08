@@ -1,11 +1,11 @@
 use aiken/list
 use aiken/transaction.{ScriptContext}
-use types.{ConsumeFeatureDatum}
+use types.{ConsumeFuturesDatum}
 use utils.{get_lower_bound}
 
 validator {
   fn spend(
-    datum: ConsumeFeatureDatum,
+    datum: ConsumeFuturesDatum,
     _redeemer: Int,
     ctx: ScriptContext,
   ) -> Bool {

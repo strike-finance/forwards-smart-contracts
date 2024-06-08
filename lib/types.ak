@@ -13,7 +13,7 @@ pub type AddressHash =
 pub type POSIXTime =
   Int
 
-pub type FeatureDatum {
+pub type FuturesDatum {
   issuer_address_hash: AddressHash,
   issuer_bech32_address: ByteArray,
   locked_asset: AssetClass,
@@ -24,7 +24,7 @@ pub type FeatureDatum {
   cancellation_fee: Int,
 }
 
-pub type ConsumeFeatureDatum {
+pub type ConsumeFuturesDatum {
   owner_address_hash: AddressHash,
   owner_bech32_address: ByteArray,
   asset: AssetClass,

@@ -16,7 +16,7 @@
       "datum": {
         "title": "datum",
         "schema": {
-          "$ref": "#/definitions/types~1ConsumeFeatureDatum"
+          "$ref": "#/definitions/types~1ConsumeFuturesDatum"
         }
       },
       "redeemer": {
@@ -33,7 +33,7 @@
       "datum": {
         "title": "datum",
         "schema": {
-          "$ref": "#/definitions/types~1FeatureDatum"
+          "$ref": "#/definitions/types~1FuturesDatum"
         }
       },
       "redeemer": {
@@ -44,7 +44,7 @@
       },
       "parameters": [
         {
-          "title": "consume_feature_validator",
+          "title": "consume_futures_validator",
           "schema": {
             "$ref": "#/definitions/ByteArray"
           }
@@ -65,7 +65,7 @@
       "title": "LoanRedeemer",
       "anyOf": [
         {
-          "title": "AcceptFeatureContract",
+          "title": "AcceptfuturesContract",
           "dataType": "constructor",
           "index": 0,
           "fields": [
@@ -75,7 +75,7 @@
           ]
         },
         {
-          "title": "CancelFeatureContract",
+          "title": "CancelfuturesContract",
           "dataType": "constructor",
           "index": 1,
           "fields": []
@@ -118,11 +118,11 @@
         }
       ]
     },
-    "types/ConsumeFeatureDatum": {
-      "title": "ConsumeFeatureDatum",
+    "types/ConsumeFuturesDatum": {
+      "title": "ConsumeFuturesDatum",
       "anyOf": [
         {
-          "title": "ConsumeFeatureDatum",
+          "title": "ConsumeFuturesDatum",
           "dataType": "constructor",
           "index": 0,
           "fields": [
@@ -150,11 +150,11 @@
         }
       ]
     },
-    "types/FeatureDatum": {
-      "title": "FeatureDatum",
+    "types/FuturesDatum": {
+      "title": "FuturesDatum",
       "anyOf": [
         {
-          "title": "FeatureDatum",
+          "title": "FuturesDatum",
           "dataType": "constructor",
           "index": 0,
           "fields": [
