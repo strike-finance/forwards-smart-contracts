@@ -5,7 +5,7 @@ use types.{ConsumeFuturesDatum, FuturesDatum, ObligeeInfo}
 use utils.{get_validators_inputs}
 
 type LoanRedeemer {
-  AcceptfuturesContract(ObligeeInfo)
+  AcceptFuturesContract(ObligeeInfo)
   CancelfuturesContract
 }
 
@@ -95,7 +95,7 @@ fn cancel_futures_contract_valid(datum: FuturesDatum, ctx: ScriptContext) {
 validator(consume_futures_validator: ByteArray) {
   fn spend(datum: FuturesDatum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     when redeemer.action is {
-      AcceptfuturesContract(obligee_info) ->
+      AcceptFuturesContract(obligee_info) ->
         accept_futures_contract_valid(
           datum,
           ctx,
