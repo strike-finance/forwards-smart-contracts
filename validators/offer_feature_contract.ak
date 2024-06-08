@@ -13,15 +13,6 @@ type Redeemer {
   action: LoanRedeemer,
 }
 
-// offer feature contract contains datum
-// asset, amount, deadline, owner pub key
-// takes in consume feature contract as params
-// can only consume if it is going to that contract
-// can cancel feature, 
-
-// check consumer_feature contact has two ouputs going there. 1 containing the
-// datum for swap, one containing the other. Use a simple filter function for both
-
 fn accept_feature_contract_valid(
   datum: FeatureDatum,
   ctx: ScriptContext,
@@ -44,10 +35,8 @@ fn accept_feature_contract_valid(
       asset: datum.to_asset,
       asset_amount: datum.to_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
-      cancellation_fee: datum.cancellation_fee,
     }
 
-  // get owner address hash and address, change asset amount
   let expected_obligee_datum =
     ConsumeFeatureDatum {
       owner_address_hash: obligee_info.obligee_address_hash,
@@ -55,10 +44,8 @@ fn accept_feature_contract_valid(
       asset: datum.locked_asset,
       asset_amount: datum.locked_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
-      cancellation_fee: datum.cancellation_fee,
     }
 
-  // map through the outputs and get their datum 
   expect Some(expected_issuer_utxo) =
     list.find(
       outputs_to_consume_feature_validator,
@@ -77,7 +64,6 @@ fn accept_feature_contract_valid(
       expected_issuer_datum.asset.asset_name,
     ) == expected_issuer_datum.asset_amount
 
-  // map through the outputs and get their datum 
   expect Some(expected_obligee_utxo) =
     list.find(
       outputs_to_consume_feature_validator,

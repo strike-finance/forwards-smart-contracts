@@ -30,7 +30,6 @@ pub type ConsumeFeatureDatum {
   asset: AssetClass,
   asset_amount: Int,
   exercise_contract_date: POSIXTime,
-  cancellation_fee: Int,
 }
 
 pub type ObligeeInfo {
