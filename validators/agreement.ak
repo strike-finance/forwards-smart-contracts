@@ -1,14 +1,10 @@
 use aiken/list
 use aiken/transaction.{ScriptContext}
-use types.{ConsumeFuturesDatum}
+use types.{AgreementDatum}
 use utils.{get_lower_bound}
 
 validator {
-  fn spend(
-    datum: ConsumeFuturesDatum,
-    _redeemer: Int,
-    ctx: ScriptContext,
-  ) -> Bool {
+  fn spend(datum: AgreementDatum, _redeemer: Int, ctx: ScriptContext) -> Bool {
     let must_be_signed_by_issuer =
       list.has(ctx.transaction.extra_signatories, datum.owner_address_hash)
 

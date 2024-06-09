@@ -23,7 +23,7 @@ pub type FuturesDatum {
   exercise_contract_date: POSIXTime,
 }
 
-pub type ConsumeFuturesDatum {
+pub type AgreementDatum {
   owner_address_hash: AddressHash,
   owner_bech32_address: ByteArray,
   asset: AssetClass,

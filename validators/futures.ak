@@ -1,7 +1,7 @@
 use aiken/list
 use aiken/transaction.{InlineDatum, Output, ScriptContext, find_script_outputs}
 use aiken/transaction/value.{quantity_of}
-use types.{ConsumeFuturesDatum, FuturesDatum, ObligeeInfo}
+use types.{AgreementDatum, FuturesDatum, ObligeeInfo}
 use utils.{get_validators_inputs}
 
 type LoanRedeemer {
@@ -29,7 +29,7 @@ fn accept_futures_contract_valid(
     list.length(outputs_to_consume_futures_validator) == 2
 
   let expected_issuer_datum =
-    ConsumeFuturesDatum {
+    AgreementDatum {
       owner_address_hash: datum.issuer_address_hash,
       owner_bech32_address: datum.issuer_bech32_address,
       asset: datum.to_asset,
@@ -38,7 +38,7 @@ fn accept_futures_contract_valid(
     }
 
   let expected_obligee_datum =
-    ConsumeFuturesDatum {
+    AgreementDatum {
       owner_address_hash: obligee_info.obligee_address_hash,
       owner_bech32_address: obligee_info.obligee_bech32_address,
       asset: datum.locked_asset,
@@ -51,7 +51,7 @@ fn accept_futures_contract_valid(
       outputs_to_consume_futures_validator,
       fn(output) {
         expect InlineDatum(output_datum) = output.datum
-        expect output_datum_typed: ConsumeFuturesDatum = output_datum
+        expect output_datum_typed: AgreementDatum = output_datum
 
         output_datum_typed == expected_issuer_datum
       },
@@ -69,7 +69,7 @@ fn accept_futures_contract_valid(
       outputs_to_consume_futures_validator,
       fn(output) {
         expect InlineDatum(output_datum) = output.datum
-        expect output_datum_typed: ConsumeFuturesDatum = output_datum
+        expect output_datum_typed: AgreementDatum = output_datum
 
         output_datum_typed == expected_obligee_datum
       },
