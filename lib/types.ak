@@ -13,9 +13,8 @@ pub type AddressHash =
 pub type POSIXTime =
   Int
 
-pub type FuturesDatum {
+pub type ForwardsDatum {
   issuer_address_hash: AddressHash,
-  issuer_bech32_address: ByteArray,
   locked_asset: AssetClass,
   locked_asset_amount: Int,
   to_asset: AssetClass,
@@ -25,7 +24,6 @@ pub type FuturesDatum {
 
 pub type AgreementDatum {
   owner_address_hash: AddressHash,
-  owner_bech32_address: ByteArray,
   asset: AssetClass,
   asset_amount: Int,
   exercise_contract_date: POSIXTime,
@@ -33,5 +31,4 @@ pub type AgreementDatum {
 
 pub type ObligeeInfo {
   obligee_address_hash: AddressHash,
-  obligee_bech32_address: ByteArray,
 }

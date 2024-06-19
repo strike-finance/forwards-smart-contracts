@@ -1,2 +1,3 @@
-# futures-trading-cardano
-Futures trading contract on Cardano 
+# forwards-trading-cardano
+
+Forwards trading contract on Cardano
