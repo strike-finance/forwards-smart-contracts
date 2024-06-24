@@ -4,13 +4,13 @@ use aiken/transaction/value.{quantity_of}
 use types.{AgreementDatum, ForwardsDatum, ObligeeInfo}
 use utils.{get_validators_inputs}
 
-type LoanRedeemer {
+type ForwardsRedeemer {
   AcceptForwardsContract(ObligeeInfo)
   CancelforwardsContract
 }
 
 type Redeemer {
-  action: LoanRedeemer,
+  action: ForwardsRedeemer,
 }
 
 fn accept_forwards_contract_valid(
@@ -24,10 +24,8 @@ fn accept_forwards_contract_valid(
 
   let outputs_to_consume_forwards_validator: List<Output> =
     find_script_outputs(ctx.transaction.outputs, cosumer_forwards_validator)
-
   let only_two_outputs_to_validator =
     list.length(outputs_to_consume_forwards_validator) == 2
-
   let expected_issuer_datum =
     AgreementDatum {
       owner_address_hash: datum.issuer_address_hash,
@@ -43,18 +41,15 @@ fn accept_forwards_contract_valid(
       asset_amount: datum.locked_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
     }
-
   expect Some(expected_issuer_utxo) =
     list.find(
       outputs_to_consume_forwards_validator,
       fn(output) {
         expect InlineDatum(output_datum) = output.datum
         expect output_datum_typed: AgreementDatum = output_datum
-
         output_datum_typed == expected_issuer_datum
       },
     )
-
   let expected_issuer_asset_locked_valid =
     quantity_of(
       expected_issuer_utxo.value,
@@ -68,18 +63,15 @@ fn accept_forwards_contract_valid(
       fn(output) {
         expect InlineDatum(output_datum) = output.datum
         expect output_datum_typed: AgreementDatum = output_datum
-
         output_datum_typed == expected_obligee_datum
       },
     )
-
   let expected_obligee_asset_locked_valid =
     quantity_of(
       expected_obligee_utxo.value,
       expected_obligee_datum.asset.policy_id,
       expected_obligee_datum.asset.asset_name,
     ) == expected_obligee_datum.asset_amount
-
   only_one_validator_input && only_two_outputs_to_validator && expected_issuer_asset_locked_valid && expected_obligee_asset_locked_valid
 }
 

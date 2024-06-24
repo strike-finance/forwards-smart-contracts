@@ -9,10 +9,9 @@ validator {
       list.has(ctx.transaction.extra_signatories, datum.owner_address_hash)
 
     let expiration_date_passed =
-      datum.exercise_contract_date > get_lower_bound(
+      datum.exercise_contract_date < get_lower_bound(
         ctx.transaction.validity_range,
       )
-
     must_be_signed_by_issuer && expiration_date_passed
   }
 }
