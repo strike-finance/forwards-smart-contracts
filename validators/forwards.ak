@@ -29,16 +29,20 @@ fn accept_forwards_contract_valid(
   let expected_issuer_datum =
     AgreementDatum {
       owner_address_hash: datum.issuer_address_hash,
-      asset: datum.to_asset,
-      asset_amount: datum.to_asset_amount,
+      to_asset: datum.to_asset,
+      to_asset_amount: datum.to_asset_amount,
+      from_asset: datum.from_asset,
+      from_asset_amount: datum.from_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
     }
 
   let expected_obligee_datum =
     AgreementDatum {
       owner_address_hash: obligee_info.obligee_address_hash,
-      asset: datum.locked_asset,
-      asset_amount: datum.locked_asset_amount,
+      to_asset: datum.from_asset,
+      to_asset_amount: datum.from_asset_amount,
+      from_asset: datum.to_asset,
+      from_asset_amount: datum.to_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
     }
   expect Some(expected_issuer_utxo) =
@@ -53,9 +57,9 @@ fn accept_forwards_contract_valid(
   let expected_issuer_asset_locked_valid =
     quantity_of(
       expected_issuer_utxo.value,
-      expected_issuer_datum.asset.policy_id,
-      expected_issuer_datum.asset.asset_name,
-    ) == expected_issuer_datum.asset_amount
+      expected_issuer_datum.to_asset.policy_id,
+      expected_issuer_datum.to_asset.asset_name,
+    ) == expected_issuer_datum.to_asset_amount
 
   expect Some(expected_obligee_utxo) =
     list.find(
@@ -69,9 +73,9 @@ fn accept_forwards_contract_valid(
   let expected_obligee_asset_locked_valid =
     quantity_of(
       expected_obligee_utxo.value,
-      expected_obligee_datum.asset.policy_id,
-      expected_obligee_datum.asset.asset_name,
-    ) == expected_obligee_datum.asset_amount
+      expected_obligee_datum.to_asset.policy_id,
+      expected_obligee_datum.to_asset.asset_name,
+    ) == expected_obligee_datum.to_asset_amount
   only_one_validator_input && only_two_outputs_to_validator && expected_issuer_asset_locked_valid && expected_obligee_asset_locked_valid
 }
 

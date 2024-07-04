@@ -15,8 +15,8 @@ pub type POSIXTime =
 
 pub type ForwardsDatum {
   issuer_address_hash: AddressHash,
-  locked_asset: AssetClass,
-  locked_asset_amount: Int,
+  from_asset: AssetClass,
+  from_asset_amount: Int,
   to_asset: AssetClass,
   to_asset_amount: Int,
   exercise_contract_date: POSIXTime,
@@ -24,8 +24,10 @@ pub type ForwardsDatum {
 
 pub type AgreementDatum {
   owner_address_hash: AddressHash,
-  asset: AssetClass,
-  asset_amount: Int,
+  from_asset: AssetClass,
+  from_asset_amount: Int,
+  to_asset: AssetClass,
+  to_asset_amount: Int,
   exercise_contract_date: POSIXTime,
 }
 
