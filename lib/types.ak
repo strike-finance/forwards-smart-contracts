@@ -23,6 +23,7 @@ pub type ForwardsDatum {
 }
 
 pub type AgreementDatum {
+  issuer_address_hash: AddressHash,
   owner_address_hash: AddressHash,
   from_asset: AssetClass,
   from_asset_amount: Int,

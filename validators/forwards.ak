@@ -28,6 +28,7 @@ fn accept_forwards_contract_valid(
     list.length(outputs_to_consume_forwards_validator) == 2
   let expected_issuer_datum =
     AgreementDatum {
+      issuer_address_hash: datum.issuer_address_hash,
       owner_address_hash: datum.issuer_address_hash,
       to_asset: datum.to_asset,
       to_asset_amount: datum.to_asset_amount,
@@ -38,6 +39,7 @@ fn accept_forwards_contract_valid(
 
   let expected_obligee_datum =
     AgreementDatum {
+      issuer_address_hash: datum.issuer_address_hash,
       owner_address_hash: obligee_info.obligee_address_hash,
       to_asset: datum.from_asset,
       to_asset_amount: datum.from_asset_amount,
