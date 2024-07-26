@@ -1,7 +1,7 @@
 use aiken/list
 use aiken/transaction.{InlineDatum, Output, ScriptContext, find_script_outputs}
 use aiken/transaction/value.{quantity_of}
-use types.{AgreementDatum, ForwardsDatum, ObligeeInfo}
+use types.{CollateralDatum, ForwardsDatum, ObligeeInfo}
 use utils.{get_validators_inputs}
 
 type ForwardsRedeemer {
@@ -16,69 +16,50 @@ type Redeemer {
 fn accept_forwards_contract_valid(
   datum: ForwardsDatum,
   ctx: ScriptContext,
-  cosumer_forwards_validator: ByteArray,
+  collateral_validator: ByteArray,
   obligee_info: ObligeeInfo,
 ) {
   let only_one_validator_input: Bool =
     list.length(get_validators_inputs(ctx)) == 1
 
-  let outputs_to_consume_forwards_validator: List<Output> =
-    find_script_outputs(ctx.transaction.outputs, cosumer_forwards_validator)
+  let outputs_to_collateral_validator: List<Output> =
+    find_script_outputs(ctx.transaction.outputs, collateral_validator)
   let only_two_outputs_to_validator =
-    list.length(outputs_to_consume_forwards_validator) == 2
-  let expected_issuer_datum =
-    AgreementDatum {
+    list.length(outputs_to_collateral_validator) == 1
+
+  let collateral_datum =
+    CollateralDatum {
       issuer_address_hash: datum.issuer_address_hash,
-      owner_address_hash: datum.issuer_address_hash,
-      to_asset: datum.to_asset,
-      to_asset_amount: datum.to_asset_amount,
-      from_asset: datum.from_asset,
-      from_asset_amount: datum.from_asset_amount,
+      issuer_has_deposited_asset: False,
+      issuer_deposit_asset: datum.issuer_deposit_asset,
+      issuer_deposit_asset_amount: datum.issuer_deposit_asset_amount,
+      obligee_address_hash: obligee_info.obligee_address_hash,
+      obligee_has_deposited_asset: False,
+      obligee_deposit_asset: datum.obligee_deposit_asset,
+      obligee_deposit_asset_amount: datum.obligee_deposit_asset_amount,
+      collateral_asset: datum.collateral_asset,
+      each_party_collateral_asset_amount: datum.collateral_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
     }
 
-  let expected_obligee_datum =
-    AgreementDatum {
-      issuer_address_hash: datum.issuer_address_hash,
-      owner_address_hash: obligee_info.obligee_address_hash,
-      to_asset: datum.from_asset,
-      to_asset_amount: datum.from_asset_amount,
-      from_asset: datum.to_asset,
-      from_asset_amount: datum.to_asset_amount,
-      exercise_contract_date: datum.exercise_contract_date,
-    }
-  expect Some(expected_issuer_utxo) =
+  expect Some(output_to_collater_utxo) =
     list.find(
-      outputs_to_consume_forwards_validator,
+      outputs_to_collateral_validator,
       fn(output) {
         expect InlineDatum(output_datum) = output.datum
-        expect output_datum_typed: AgreementDatum = output_datum
-        output_datum_typed == expected_issuer_datum
+        expect output_datum_typed: CollateralDatum = output_datum
+        output_datum_typed == collateral_datum
       },
     )
-  let expected_issuer_asset_locked_valid =
-    quantity_of(
-      expected_issuer_utxo.value,
-      expected_issuer_datum.to_asset.policy_id,
-      expected_issuer_datum.to_asset.asset_name,
-    ) == expected_issuer_datum.to_asset_amount
 
-  expect Some(expected_obligee_utxo) =
-    list.find(
-      outputs_to_consume_forwards_validator,
-      fn(output) {
-        expect InlineDatum(output_datum) = output.datum
-        expect output_datum_typed: AgreementDatum = output_datum
-        output_datum_typed == expected_obligee_datum
-      },
-    )
-  let expected_obligee_asset_locked_valid =
+  let expected_asset_locked_valid =
     quantity_of(
-      expected_obligee_utxo.value,
-      expected_obligee_datum.to_asset.policy_id,
-      expected_obligee_datum.to_asset.asset_name,
-    ) == expected_obligee_datum.to_asset_amount
-  only_one_validator_input && only_two_outputs_to_validator && expected_issuer_asset_locked_valid && expected_obligee_asset_locked_valid
+      output_to_collater_utxo.value,
+      collateral_datum.collateral_asset.policy_id,
+      collateral_datum.collateral_asset.asset_name,
+    ) >= collateral_datum.each_party_collateral_asset_amount * 2
+
+  only_one_validator_input && only_two_outputs_to_validator && expected_asset_locked_valid
 }
 
 fn cancel_forwards_contract_valid(datum: ForwardsDatum, ctx: ScriptContext) {
@@ -88,14 +69,14 @@ fn cancel_forwards_contract_valid(datum: ForwardsDatum, ctx: ScriptContext) {
   must_be_signed_by_issuer
 }
 
-validator(consume_forwards_validator: ByteArray) {
+validator(collateral_validator: ByteArray) {
   fn spend(datum: ForwardsDatum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     when redeemer.action is {
       AcceptForwardsContract(obligee_info) ->
         accept_forwards_contract_valid(
           datum,
           ctx,
-          consume_forwards_validator,
+          collateral_validator,
           obligee_info,
         )
 

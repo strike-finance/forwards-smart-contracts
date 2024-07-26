@@ -15,20 +15,36 @@ pub type POSIXTime =
 
 pub type ForwardsDatum {
   issuer_address_hash: AddressHash,
-  from_asset: AssetClass,
-  from_asset_amount: Int,
-  to_asset: AssetClass,
-  to_asset_amount: Int,
+  issuer_deposit_asset: AssetClass,
+  issuer_deposit_asset_amount: Int,
+  obligee_deposit_asset: AssetClass,
+  obligee_deposit_asset_amount: Int,
+  collateral_asset: AssetClass,
+  collateral_asset_amount: Int,
+  exercise_contract_date: POSIXTime,
+}
+
+pub type CollateralDatum {
+  issuer_address_hash: AddressHash,
+  issuer_has_deposited_asset: Bool,
+  issuer_deposit_asset: AssetClass,
+  issuer_deposit_asset_amount: Int,
+  obligee_address_hash: AddressHash,
+  obligee_has_deposited_asset: Bool,
+  obligee_deposit_asset: AssetClass,
+  obligee_deposit_asset_amount: Int,
+  collateral_asset: AssetClass,
+  each_party_collateral_asset_amount: Int,
   exercise_contract_date: POSIXTime,
 }
 
 pub type AgreementDatum {
   issuer_address_hash: AddressHash,
-  owner_address_hash: AddressHash,
-  from_asset: AssetClass,
-  from_asset_amount: Int,
-  to_asset: AssetClass,
-  to_asset_amount: Int,
+  utxo_owner_address_hash: AddressHash,
+  issuer_deposit_asset: AssetClass,
+  issuer_deposit_asset_amount: Int,
+  obligee_deposit_asset: AssetClass,
+  obligee_deposit_asset_amount: Int,
   exercise_contract_date: POSIXTime,
 }
 
