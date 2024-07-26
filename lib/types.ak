@@ -45,6 +45,8 @@ pub type AgreementDatum {
   issuer_deposit_asset_amount: Int,
   obligee_deposit_asset: AssetClass,
   obligee_deposit_asset_amount: Int,
+  collateral_asset: AssetClass,
+  collateral_asset_amount: Int,
   exercise_contract_date: POSIXTime,
 }
 

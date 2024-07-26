@@ -97,6 +97,8 @@ fn both_sides_deposit_agreement(
       issuer_deposit_asset_amount: datum.issuer_deposit_asset_amount,
       obligee_deposit_asset: datum.obligee_deposit_asset,
       obligee_deposit_asset_amount: datum.obligee_deposit_asset_amount,
+      collateral_asset: datum.collateral_asset,
+      collateral_asset_amount: datum.each_party_collateral_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
     }
   expect Some(expected_issuer_utxo) =
@@ -117,6 +119,8 @@ fn both_sides_deposit_agreement(
       issuer_deposit_asset_amount: datum.issuer_deposit_asset_amount,
       obligee_deposit_asset: datum.obligee_deposit_asset,
       obligee_deposit_asset_amount: datum.obligee_deposit_asset_amount,
+      collateral_asset: datum.collateral_asset,
+      collateral_asset_amount: datum.each_party_collateral_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
     }
 
