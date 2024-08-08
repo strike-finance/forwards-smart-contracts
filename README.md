@@ -30,9 +30,9 @@ The smart contract code is written in Aiken.
 
 There are three seperate validators. 
 
-A forwards validator, where all open forwards contract offer UTxOs are locked. This contract handles the logic of entering a forwards contract by both parties depositing collateral and cancelling forwards contract offer. 
+A forwards validator, where all open forwards contract offer UTxOs are locked. This contract handles the logic of entering a forwards contract by both parties depositing collateral and cancelling forwards contract offer. The forwards validator is parameterized by the collateral validator.
 
-A collateral validator, where all collateral UTxOs are locked. This validator handles the logic of depositing the required assets of the contract and consuming the other parties collateral if they failed to deposit the required assets of the contract.
+A collateral validator, where all collateral UTxOs are locked. This validator handles the logic of depositing the required assets of the contract and consuming the other parties collateral if they failed to deposit the required assets of the contract. The collateral validator is parameterized by the exercise validator.
 
 A exercise validator, where all exercise UTxOs are locked. This validator handles the logic of exercising the forwards contract and each party getting their assets.
 
@@ -56,5 +56,27 @@ pub type ForwardsDatum {
 ```
 Since there is no way to enforce UTxOs being sent to the script address has a valid datum field, the Strike Finance platform will simply ignore malicious UTxOs. The `collateral_asset` determines what the issuer of the forward contract locks up in the UTxO. The issuer does not need to desposit the asset in `issuer_deposit_asset` immediatley. Just before the `exercise_contract_date`. A valid forwards offer UTxO will contain the amount specified in `collateral_asset_amount` and the asset specified in `collateral_asset` locked up in the UTxO. 
 
-###
+### Cancel Forward
+Forward issuers can cancel the forward offer and get the collateral asset back 
+
+**Validation Logic**
+The transaction must be signed by the issuer 
+
+### Enter Forward 
+
+### Deposit Asset
+
+### Consume Collateral
+
+### Exercise Forward 
+
+## Links
+- [Website](https://www.strikefinance.org/forwards)
+- [Documentation](https://docs.strikefinance.org/)
+- [Platform Walkthrough](https://youtu.be/l7Qaizf4NtI)
+
+## Future Features
+
+1. On the exercise contract date the assets should automatically be send to each party by an off-chain bot.
+2. If one party has not deposited the asset before the exercise contract date, the collateral should automatically be send to the other party by an off-chain bot.
 
