@@ -60,11 +60,37 @@ Since there is no way to enforce UTxOs being sent to the script address has a va
 Forward issuers can cancel the forward offer and get the collateral asset back 
 
 **Validation Logic**
-The transaction must be signed by the issuer 
+* The transaction must be signed by the issuer 
 
 ### Enter Forward 
+To enter a forward contract the obligee must consume the forward utxo and send it to the collateral validator address. Below is the datum value for the collateral UTxO. Both the issuer's collateral asset and the obligee's collateral 
+```
+pub type CollateralDatum {
+  issuer_address_hash: AddressHash,
+  issuer_has_deposited_asset: Bool,
+  issuer_deposit_asset: AssetClass,
+  issuer_deposit_asset_amount: Int,
+  obligee_address_hash: AddressHash,
+  obligee_has_deposited_asset: Bool,
+  obligee_deposit_asset: AssetClass,
+  obligee_deposit_asset_amount: Int,
+  collateral_asset: AssetClass,
+  collateral_asset_amount: Int,
+  exercise_contract_date: POSIXTime,
+}
+```
+
+**Validation Logic**
+* The obligee must send the amount specified in `collateral_asset_amount` and asset specified in `collateral_asset` to to the collateral script address
+* The issuers collateral asset are not consumed and is also send to the collateral script address in the same UTxO
+* The datum values specifiying who the issuer and obligee is, their required deposit asset, the collateral assets, and the deadline are not changed
+
 
 ### Deposit Asset
+Each party can deposit the required asset anytime before the `exercise_contract_date`. Whichever party desposits the asset will be able to get their collateral back and update the field, either `issuer_has_deposited_asset` or `obligee_has_deposited_asset` to true.
+
+**Validation Logic**
+
 
 ### Consume Collateral
 
