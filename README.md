@@ -5,12 +5,12 @@
 - [What Are Forwards](#what-are-forwards)
 - [Technical High-Level Overview](#technical-high-level-overview)
 - [Smart Contract Implementation](#smart-contract-implementation)
-  - [Create Forwards](#create-forwards)
-  - [Cancel Forwards](#cancel-forwards)
-  - [Enter Forwards](#enter-forwards)
+  - [Create Forward](#create-forward)
+  - [Cancel Forward](#cancel-forward)
+  - [Enter Forward Agreement](#enter-forward-agreement)
   - [Deposit Asset](#deposit-asset)
   - [Consume Collateral](#consume-collateral)
-  - [Exercise Forwards](#exercise-forwards)
+  - [Exercise Forward](#exercise-forward)
 - [Links](#links)
 - [Future Features](#future-features)
 
@@ -67,8 +67,8 @@ Forward issuers can cancel the forward offer and reclaim the collateral asset.
 **Validation Logic**
 * The transaction must be signed by the issuer.
 
-### Enter Forward
-To enter a forward contract, the obligee must consume the forward UTxO and send it to the collateral validator address. The collateral UTxO datum:
+### Enter Forward Agreement
+To enter a forward contract agreement, the obligee must consume the forward UTxO and send it to the collateral validator address. The UTxO in the collateral validator address needs to contain both parties collateral. The collateral UTxO datum:
 ```
 pub type CollateralDatum {
   issuer_address_hash: AddressHash,
