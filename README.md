@@ -1,4 +1,4 @@
-# Strike Finance Options Smart Contract
+# Strike Finance Forwards Smart Contract
 
 ## Table of Contents
 - [Introduction](#introduction)
