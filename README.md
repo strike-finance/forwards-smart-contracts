@@ -38,3 +38,23 @@ A exercise validator, where all exercise UTxOs are locked. This validator handle
 
 No assets are minted or burned in any interaction with the contract. To create a forwards contract, enter a forwards contract etc.. requires sending UTxOs to different validator address with a valid datum value. 
 
+## Smart Contract Implementation
+
+### Creating Forwards Contract
+This is the datum of a forwards offer UTxO
+```
+pub type ForwardsDatum {
+  issuer_address_hash: AddressHash,
+  issuer_deposit_asset: AssetClass,
+  issuer_deposit_asset_amount: Int,
+  obligee_deposit_asset: AssetClass,
+  obligee_deposit_asset_amount: Int,
+  collateral_asset: AssetClass,
+  collateral_asset_amount: Int,
+  exercise_contract_date: POSIXTime,
+}
+```
+Since there is no way to enforce UTxOs being sent to the script address has a valid datum field, the Strike Finance platform will simply ignore malicious UTxOs. The `collateral_asset` determines what the issuer of the forward contract locks up in the UTxO. The issuer does not need to desposit the asset in `issuer_deposit_asset` immediatley. Just before the `exercise_contract_date`. A valid forwards offer UTxO will contain the amount specified in `collateral_asset_amount` and the asset specified in `collateral_asset` locked up in the UTxO. 
+
+###
+
