@@ -1,6 +1,6 @@
 use aiken/list
 use aiken/transaction.{InlineDatum, Output, ScriptContext, find_script_outputs}
-use aiken/transaction/value.{quantity_of}
+use aiken/transaction/value.{AssetName, PolicyId, quantity_of}
 use types.{CollateralDatum, ForwardsDatum, ObligeeInfo}
 use utils.{get_validators_inputs}
 
@@ -24,7 +24,7 @@ fn accept_forwards_contract_valid(
 
   let outputs_to_collateral_validator: List<Output> =
     find_script_outputs(ctx.transaction.outputs, collateral_validator)
-  let only_two_outputs_to_validator =
+  let only_one_output_to_collateral_validator =
     list.length(outputs_to_collateral_validator) == 1
 
   let collateral_datum =
@@ -39,6 +39,8 @@ fn accept_forwards_contract_valid(
       obligee_deposit_asset_amount: datum.obligee_deposit_asset_amount,
       collateral_asset: datum.collateral_asset,
       each_party_collateral_asset_amount: datum.collateral_asset_amount,
+      strike_collateral_asset: datum.strike_collateral_asset,
+      each_party_strike_collateral_asset_amount: datum.each_party_strike_collateral_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
     }
 
@@ -59,7 +61,14 @@ fn accept_forwards_contract_valid(
       collateral_datum.collateral_asset.asset_name,
     ) >= collateral_datum.each_party_collateral_asset_amount * 2
 
-  only_one_validator_input && only_two_outputs_to_validator && expected_asset_locked_valid
+  let expected_strike_collateral_asset_locked_valid =
+    quantity_of(
+      output_to_collater_utxo.value,
+      collateral_datum.strike_collateral_asset.policy_id,
+      collateral_datum.strike_collateral_asset.asset_name,
+    ) >= collateral_datum.each_party_strike_collateral_asset_amount * 2
+
+  only_one_validator_input && only_one_output_to_collateral_validator && expected_asset_locked_valid && expected_strike_collateral_asset_locked_valid
 }
 
 fn cancel_forwards_contract_valid(datum: ForwardsDatum, ctx: ScriptContext) {
@@ -69,7 +78,11 @@ fn cancel_forwards_contract_valid(datum: ForwardsDatum, ctx: ScriptContext) {
   must_be_signed_by_issuer
 }
 
-validator(collateral_validator: ByteArray) {
+validator(
+  collateral_validator: ByteArray,
+  _asset_name: AssetName,
+  _policy_id: PolicyId,
+) {
   fn spend(datum: ForwardsDatum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
     when redeemer.action is {
       AcceptForwardsContract(obligee_info) ->

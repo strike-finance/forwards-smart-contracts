@@ -2,13 +2,14 @@ use aiken/list
 use aiken/transaction.{
   InlineDatum, Output, ScriptContext, Spend, find_script_outputs,
 }
+use aiken/transaction/credential.{Address, from_verification_key}
 use aiken/transaction/value.{quantity_of}
 use types.{AddressHash, AgreementDatum, AssetClass, CollateralDatum}
 use utils.{
   get_address_hash_based_on_party, get_address_outputs,
   get_asset_amount_locked_based_on_party, get_asset_locked_based_on_party,
-  get_datum_based_on_party, get_lower_bound, get_party_has_deposited_asset,
-  get_validators_inputs,
+  get_asset_to_address_valid, get_datum_based_on_party, get_lower_bound,
+  get_party_has_deposited_asset, get_validators_inputs,
 }
 
 // 0 = issuer, 1 = obligee
@@ -57,6 +58,13 @@ fn one_side_deposit_agreement(
       datum.collateral_asset.asset_name,
     ) >= datum.each_party_collateral_asset_amount
 
+  let strike_collateral_asset_send_back_valid: Bool =
+    quantity_of(
+      output_to_validator.value,
+      datum.strike_collateral_asset.policy_id,
+      datum.strike_collateral_asset.asset_name,
+    ) >= datum.each_party_strike_collateral_asset_amount
+
   let expected_asset_locked: AssetClass =
     get_asset_locked_based_on_party(datum, deposit_party)
 
@@ -70,10 +78,9 @@ fn one_side_deposit_agreement(
       expected_asset_locked.asset_name,
     ) >= expected_asset_amount_locked
 
-  only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && collateral_send_back_valid && asset_locked_valid
+  only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && collateral_send_back_valid && asset_locked_valid && strike_collateral_asset_send_back_valid
 }
 
-// 
 fn both_sides_deposit_agreement(
   datum: CollateralDatum,
   ctx: ScriptContext,
@@ -160,25 +167,53 @@ fn consume_collateral_valid(
   datum: CollateralDatum,
   ctx: ScriptContext,
   party: Int,
+  liquidate_validator: ByteArray,
 ) {
   let party_address_hash: AddressHash =
     get_address_hash_based_on_party(datum, party)
 
+  let current_owner_address: Address = from_verification_key(party_address_hash)
+
+  let amount_to_address_valid: Bool =
+    get_asset_to_address_valid(
+      datum,
+      party,
+      ctx.transaction.outputs,
+      current_owner_address,
+    )
+
   let party_has_deposited_asset: Bool =
     get_party_has_deposited_asset(datum, party)
-
-  let must_be_signed_by_party =
-    list.has(ctx.transaction.extra_signatories, party_address_hash)
 
   let deadline_has_passed =
     datum.exercise_contract_date < get_lower_bound(
       ctx.transaction.validity_range,
     )
 
-  must_be_signed_by_party && deadline_has_passed && party_has_deposited_asset
+  let default_case =
+    deadline_has_passed && party_has_deposited_asset && amount_to_address_valid
+
+  if datum.each_party_strike_collateral_asset_amount != 0 {
+    let outputs_to_liquidate_validator: List<Output> =
+      find_script_outputs(ctx.transaction.outputs, liquidate_validator)
+
+    expect Some(output_to_collateral_validator) =
+      list.head(outputs_to_liquidate_validator)
+
+    let strike_collateral_asset_burnt =
+      quantity_of(
+        output_to_collateral_validator.value,
+        datum.strike_collateral_asset.policy_id,
+        datum.strike_collateral_asset.asset_name,
+      ) >= datum.each_party_strike_collateral_asset_amount
+
+    default_case && strike_collateral_asset_burnt
+  } else {
+    default_case
+  }
 }
 
-validator(agreement_validator: ByteArray) {
+validator(agreement_validator: ByteArray, liquidate_validator: ByteArray) {
   fn spend(
     datum: CollateralDatum,
     redeemer: Redeemer,
@@ -192,7 +227,12 @@ validator(agreement_validator: ByteArray) {
         both_sides_deposit_agreement(datum, ctx, agreement_validator)
 
       LiquidateCollateral(liquidate_party) ->
-        consume_collateral_valid(datum, ctx, liquidate_party)
+        consume_collateral_valid(
+          datum,
+          ctx,
+          liquidate_party,
+          liquidate_validator,
+        )
     }
   }
 }

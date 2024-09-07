@@ -21,6 +21,8 @@ pub type ForwardsDatum {
   obligee_deposit_asset_amount: Int,
   collateral_asset: AssetClass,
   collateral_asset_amount: Int,
+  strike_collateral_asset: AssetClass,
+  each_party_strike_collateral_asset_amount: Int,
   exercise_contract_date: POSIXTime,
 }
 
@@ -35,6 +37,8 @@ pub type CollateralDatum {
   obligee_deposit_asset_amount: Int,
   collateral_asset: AssetClass,
   each_party_collateral_asset_amount: Int,
+  strike_collateral_asset: AssetClass,
+  each_party_strike_collateral_asset_amount: Int,
   exercise_contract_date: POSIXTime,
 }
 
