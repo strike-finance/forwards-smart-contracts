@@ -60,6 +60,7 @@ pub fn get_datum_based_on_party(
         strike_collateral_asset: datum.strike_collateral_asset,
         each_party_strike_collateral_asset_amount: datum.each_party_strike_collateral_asset_amount,
         exercise_contract_date: datum.exercise_contract_date,
+        mint_asset: datum.mint_asset,
       }
     expected_new_datum
   } else {
@@ -78,6 +79,7 @@ pub fn get_datum_based_on_party(
         strike_collateral_asset: datum.strike_collateral_asset,
         each_party_strike_collateral_asset_amount: datum.each_party_strike_collateral_asset_amount,
         exercise_contract_date: datum.exercise_contract_date,
+        mint_asset: datum.mint_asset,
       }
     expected_new_datum
   }

@@ -1,7 +1,7 @@
 use cardano/address.{Address, from_verification_key}
 use cardano/transaction.{Transaction}
 use types.{AgreementDatum}
-use utils.{get_asset_to_address, get_lower_bound}
+use utils.{get_asset_to_address, get_lower_bound, validate_token_mint}
 
 validator agreement {
   spend(
@@ -14,6 +14,16 @@ validator agreement {
     let current_owner_address: Address =
       from_verification_key(datum.utxo_owner_address_hash)
 
+    let expected_mint =
+      (datum.mint_asset.policy_id, datum.mint_asset.asset_name, -2)
+
+    let expiration_date_passed: Bool =
+      datum.exercise_contract_date < get_lower_bound(self.validity_range)
+
+    let valid_mint: Bool = validate_token_mint(self.mint, expected_mint)
+
+    let default_case: Bool = expiration_date_passed && valid_mint
+
     if datum.issuer_address_hash == datum.utxo_owner_address_hash {
       let amount_to_issuer: Int =
         get_asset_to_address(
@@ -23,13 +33,10 @@ validator agreement {
           datum.issuer_deposit_asset.asset_name,
         )
 
-      let expiration_date_passed =
-        datum.exercise_contract_date < get_lower_bound(self.validity_range)
-
       let amount_to_issuer_valid =
         datum.issuer_deposit_asset_amount == amount_to_issuer
 
-      expiration_date_passed && amount_to_issuer_valid
+      default_case && amount_to_issuer_valid
     } else {
       let amount_to_obligee: Int =
         get_asset_to_address(
@@ -42,9 +49,7 @@ validator agreement {
       let amount_to_obligee_valid =
         datum.obligee_deposit_asset_amount == amount_to_obligee
 
-      let expiration_date_passed =
-        datum.exercise_contract_date < get_lower_bound(self.validity_range)
-      expiration_date_passed && amount_to_obligee_valid
+      default_case && amount_to_obligee_valid
     }
   }
 

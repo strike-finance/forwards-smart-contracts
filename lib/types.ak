@@ -23,6 +23,7 @@ pub type ForwardsDatum {
   strike_collateral_asset: AssetClass,
   each_party_strike_collateral_asset_amount: Int,
   exercise_contract_date: POSIXTime,
+  mint_asset: AssetClass,
 }
 
 pub type CollateralDatum {
@@ -39,6 +40,7 @@ pub type CollateralDatum {
   strike_collateral_asset: AssetClass,
   each_party_strike_collateral_asset_amount: Int,
   exercise_contract_date: POSIXTime,
+  mint_asset: AssetClass,
 }
 
 pub type AgreementDatum {
@@ -51,6 +53,7 @@ pub type AgreementDatum {
   collateral_asset: AssetClass,
   collateral_asset_amount: Int,
   exercise_contract_date: POSIXTime,
+  mint_asset: AssetClass,
 }
 
 pub type ObligeeInfo {
@@ -73,4 +76,5 @@ pub type MintRedeemer {
   CreateForwardMint
   EnterForwardMint
   CancelBurn
+  LiquidateBurn
 }

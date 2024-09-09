@@ -12,7 +12,7 @@ use utils.{
   get_address_hash_based_on_party, get_address_outputs,
   get_asset_amount_locked_based_on_party, get_asset_locked_based_on_party,
   get_asset_to_address_valid, get_datum_based_on_party, get_lower_bound,
-  get_party_has_deposited_asset, get_validators_inputs,
+  get_party_has_deposited_asset, get_validators_inputs, validate_token_mint,
 }
 
 fn one_side_deposit_agreement(
@@ -71,7 +71,14 @@ fn one_side_deposit_agreement(
       expected_asset_locked.asset_name,
     ) >= expected_asset_amount_locked
 
-  only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && collateral_send_back_valid && asset_locked_valid && strike_collateral_asset_send_back_valid
+  let mint_asset_not_consumed =
+    quantity_of(
+      output_to_validator.value,
+      datum.mint_asset.policy_id,
+      datum.mint_asset.asset_name,
+    ) == 2
+
+  mint_asset_not_consumed && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && collateral_send_back_valid && asset_locked_valid && strike_collateral_asset_send_back_valid
 }
 
 fn both_sides_deposit_agreement(
@@ -101,6 +108,7 @@ fn both_sides_deposit_agreement(
       collateral_asset: datum.collateral_asset,
       collateral_asset_amount: datum.each_party_collateral_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
+      mint_asset: datum.mint_asset,
     }
   expect Some(expected_issuer_utxo) =
     list.find(
@@ -123,6 +131,7 @@ fn both_sides_deposit_agreement(
       collateral_asset: datum.collateral_asset,
       collateral_asset_amount: datum.each_party_collateral_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
+      mint_asset: datum.mint_asset,
     }
 
   expect Some(expected_obligee_utxo) =
@@ -135,26 +144,40 @@ fn both_sides_deposit_agreement(
       },
     )
 
-  let expected_issuer_utxo_contains_correct_asset =
+  let obligee_utxo_contains_asset: Bool =
+    quantity_of(
+      expected_obligee_utxo.value,
+      datum.mint_asset.policy_id,
+      datum.mint_asset.asset_name,
+    ) == 1
+
+  let issuer_utxo_contains_asset: Bool =
+    quantity_of(
+      expected_issuer_utxo.value,
+      datum.mint_asset.policy_id,
+      datum.mint_asset.asset_name,
+    ) == 1
+
+  let expected_issuer_utxo_contains_correct_asset: Bool =
     quantity_of(
       expected_issuer_utxo.value,
       datum.obligee_deposit_asset.policy_id,
       datum.obligee_deposit_asset.asset_name,
     ) >= datum.obligee_deposit_asset_amount
 
-  let expected_obligee_contains_correct_asset =
+  let expected_obligee_contains_correct_asset: Bool =
     quantity_of(
       expected_obligee_utxo.value,
       datum.issuer_deposit_asset.policy_id,
       datum.issuer_deposit_asset.asset_name,
     ) >= datum.issuer_deposit_asset_amount
 
-  let deadline_not_passed =
+  let deadline_not_passed: Bool =
     datum.exercise_contract_date > get_lower_bound(
       ctx.transaction.validity_range,
     )
 
-  only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && expected_issuer_utxo_contains_correct_asset && expected_obligee_contains_correct_asset
+  issuer_utxo_contains_asset && obligee_utxo_contains_asset && expected_issuer_utxo_contains_correct_asset && expected_obligee_contains_correct_asset && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed
 }
 
 fn consume_collateral_valid(
@@ -180,22 +203,31 @@ fn consume_collateral_valid(
   let party_has_deposited_asset: Bool =
     get_party_has_deposited_asset(datum, party)
 
-  let deadline_has_passed =
+  let deadline_has_passed: Bool =
     datum.exercise_contract_date < get_lower_bound(
       ctx.transaction.validity_range,
     )
 
-  let default_case =
-    deadline_has_passed && party_has_deposited_asset && amount_to_address_valid
+  let expected_mint =
+    (datum.mint_asset.policy_id, datum.mint_asset.asset_name, -2)
 
-  if datum.each_party_strike_collateral_asset_amount != 0 {
+  let valid_mint: Bool =
+    validate_token_mint(ctx.transaction.mint, expected_mint)
+
+  let default_case: Bool =
+    deadline_has_passed && party_has_deposited_asset && amount_to_address_valid && valid_mint
+
+  let strike_is_used_as_collateral: Bool =
+    datum.each_party_strike_collateral_asset_amount != 0
+
+  if strike_is_used_as_collateral {
     let outputs_to_liquidate_validator: List<Output> =
       find_script_outputs(ctx.transaction.outputs, liquidate_validator)
 
     expect Some(output_to_collateral_validator) =
       list.head(outputs_to_liquidate_validator)
 
-    let strike_collateral_asset_burnt =
+    let strike_collateral_asset_burnt: Bool =
       quantity_of(
         output_to_collateral_validator.value,
         datum.strike_collateral_asset.policy_id,

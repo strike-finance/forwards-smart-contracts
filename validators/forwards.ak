@@ -4,7 +4,7 @@ use cardano/transaction.{InlineDatum, Output, Transaction, find_script_outputs}
 use types.{
   AcceptForwardsContract, CancelBurn, CancelForwardsContract, CollateralDatum,
   CreateForwardMint, EnterForwardMint, ForwardsDatum, ForwardsRedeemer,
-  MintRedeemer, ObligeeInfo,
+  LiquidateBurn, MintRedeemer, ObligeeInfo,
 }
 use utils.{get_validators_inputs, validate_token_mint}
 
@@ -38,6 +38,7 @@ fn accept_forwards_contract_valid(
       strike_collateral_asset: datum.strike_collateral_asset,
       each_party_strike_collateral_asset_amount: datum.each_party_strike_collateral_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
+      mint_asset: datum.mint_asset,
     }
 
   expect Some(output_to_collater_utxo) =
@@ -106,6 +107,9 @@ fn enter_forward_mint_valid(
   expect Some(output_to_collateral_validator) =
     list.head(outputs_to_collateral_validator)
 
+  expect InlineDatum(output_datum) = output_to_collateral_validator.datum
+  expect output_datum_typed: CollateralDatum = output_datum
+
   let expected_mint = (policy_id, token_name, 1)
 
   let valid_mint = validate_token_mint(transaction.mint, expected_mint)
@@ -113,7 +117,10 @@ fn enter_forward_mint_valid(
   let utxo_contains_two_assets =
     quantity_of(output_to_collateral_validator.value, policy_id, token_name) == 2
 
-  valid_mint && only_one_output_to_collateral_validator && utxo_contains_two_assets
+  let valid_mint_asset =
+    output_datum_typed.mint_asset.policy_id == policy_id && output_datum_typed.mint_asset.asset_name == token_name
+
+  valid_mint && only_one_output_to_collateral_validator && utxo_contains_two_assets && valid_mint_asset
 }
 
 fn cancel_burn_valid(
@@ -122,6 +129,18 @@ fn cancel_burn_valid(
   token_name: ByteArray,
 ) -> Bool {
   let expected_mint = (policy_id, token_name, -1)
+
+  let valid_mint = validate_token_mint(transaction.mint, expected_mint)
+
+  valid_mint
+}
+
+fn liquidate_burn_valid(
+  transaction: Transaction,
+  policy_id: PolicyId,
+  token_name: ByteArray,
+) -> Bool {
+  let expected_mint = (policy_id, token_name, -2)
 
   let valid_mint = validate_token_mint(transaction.mint, expected_mint)
 
@@ -161,6 +180,7 @@ validator forwards(token_name: ByteArray, collateral_validator: ByteArray) {
           collateral_validator,
         )
       CancelBurn -> cancel_burn_valid(transaction, policy_id, token_name)
+      LiquidateBurn -> liquidate_burn_valid(transaction, policy_id, token_name)
     }
   }
 
