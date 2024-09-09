@@ -70,6 +70,7 @@ pub type ForwardsRedeemer {
 }
 
 pub type MintRedeemer {
-  EnterMint
+  CreateForwardMint
+  EnterForwardMint
   CancelBurn
 }

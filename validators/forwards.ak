@@ -3,9 +3,10 @@ use cardano/assets.{PolicyId, quantity_of}
 use cardano/transaction.{InlineDatum, Output, Transaction, find_script_outputs}
 use types.{
   AcceptForwardsContract, CancelBurn, CancelForwardsContract, CollateralDatum,
-  EnterMint, ForwardsDatum, ForwardsRedeemer, MintRedeemer, ObligeeInfo,
+  CreateForwardMint, EnterForwardMint, ForwardsDatum, ForwardsRedeemer,
+  MintRedeemer, ObligeeInfo,
 }
-use utils.{get_validators_inputs}
+use utils.{get_validators_inputs, validate_token_mint}
 
 fn accept_forwards_contract_valid(
   datum: Option<ForwardsDatum>,
@@ -22,7 +23,7 @@ fn accept_forwards_contract_valid(
   let only_one_output_to_collateral_validator =
     list.length(outputs_to_collateral_validator) == 1
 
-  let collateral_datum =
+  let expected_collateral_datum =
     CollateralDatum {
       issuer_address_hash: datum.issuer_address_hash,
       issuer_has_deposited_asset: False,
@@ -45,27 +46,28 @@ fn accept_forwards_contract_valid(
       fn(output) {
         expect InlineDatum(output_datum) = output.datum
         expect output_datum_typed: CollateralDatum = output_datum
-        output_datum_typed == collateral_datum
+        output_datum_typed == expected_collateral_datum
       },
     )
 
   let expected_asset_locked_valid =
     quantity_of(
       output_to_collater_utxo.value,
-      collateral_datum.collateral_asset.policy_id,
-      collateral_datum.collateral_asset.asset_name,
-    ) >= collateral_datum.each_party_collateral_asset_amount * 2
+      expected_collateral_datum.collateral_asset.policy_id,
+      expected_collateral_datum.collateral_asset.asset_name,
+    ) >= expected_collateral_datum.each_party_collateral_asset_amount * 2
 
   let expected_strike_collateral_asset_locked_valid =
     quantity_of(
       output_to_collater_utxo.value,
-      collateral_datum.strike_collateral_asset.policy_id,
-      collateral_datum.strike_collateral_asset.asset_name,
-    ) >= collateral_datum.each_party_strike_collateral_asset_amount * 2
+      expected_collateral_datum.strike_collateral_asset.policy_id,
+      expected_collateral_datum.strike_collateral_asset.asset_name,
+    ) >= expected_collateral_datum.each_party_strike_collateral_asset_amount * 2
 
   only_one_validator_input && only_one_output_to_collateral_validator && expected_asset_locked_valid && expected_strike_collateral_asset_locked_valid
 }
 
+// asset is burnt 
 fn cancel_forwards_contract_valid(
   datum: Option<ForwardsDatum>,
   transaction: Transaction,
@@ -77,38 +79,88 @@ fn cancel_forwards_contract_valid(
   must_be_signed_by_issuer
 }
 
-fn enter_mint_valid(rdmr: MintRedeemer, tx: Transaction) -> Bool {
-  False
+fn create_forward_mint_valid(
+  transaction: Transaction,
+  policy_id: PolicyId,
+  token_name: ByteArray,
+) -> Bool {
+  let expected_mint = (policy_id, token_name, 1)
+
+  let valid_mint = validate_token_mint(transaction.mint, expected_mint)
+
+  valid_mint
 }
 
-fn cancel_burn_valid(rdmr: MintRedeemer, tx: Transaction) -> Bool {
-  False
+fn enter_forward_mint_valid(
+  transaction: Transaction,
+  policy_id: PolicyId,
+  token_name: ByteArray,
+  collateral_validator: ByteArray,
+) -> Bool {
+  let outputs_to_collateral_validator: List<Output> =
+    find_script_outputs(transaction.outputs, collateral_validator)
+
+  let only_one_output_to_collateral_validator =
+    list.length(outputs_to_collateral_validator) == 1
+
+  expect Some(output_to_collateral_validator) =
+    list.head(outputs_to_collateral_validator)
+
+  let expected_mint = (policy_id, token_name, 1)
+
+  let valid_mint = validate_token_mint(transaction.mint, expected_mint)
+
+  let utxo_contains_two_assets =
+    quantity_of(output_to_collateral_validator.value, policy_id, token_name) == 2
+
+  valid_mint && only_one_output_to_collateral_validator && utxo_contains_two_assets
 }
 
-validator forwards(collateral_validator: ByteArray) {
+fn cancel_burn_valid(
+  transaction: Transaction,
+  policy_id: PolicyId,
+  token_name: ByteArray,
+) -> Bool {
+  let expected_mint = (policy_id, token_name, -1)
+
+  let valid_mint = validate_token_mint(transaction.mint, expected_mint)
+
+  valid_mint
+}
+
+validator forwards(token_name: ByteArray, collateral_validator: ByteArray) {
   spend(
     datum: Option<ForwardsDatum>,
     redeemer: ForwardsRedeemer,
     _0: Data,
-    ctx: Transaction,
+    transaction: Transaction,
   ) {
     when redeemer is {
       AcceptForwardsContract(obligee_info) ->
         accept_forwards_contract_valid(
           datum,
-          ctx,
+          transaction,
           collateral_validator,
           obligee_info,
         )
 
-      CancelForwardsContract -> cancel_forwards_contract_valid(datum, ctx)
+      CancelForwardsContract ->
+        cancel_forwards_contract_valid(datum, transaction)
     }
   }
 
-  mint(rdmr: MintRedeemer, policy_id: PolicyId, tx: Transaction) {
+  mint(rdmr: MintRedeemer, policy_id: PolicyId, transaction: Transaction) {
     when rdmr is {
-      EnterMint -> enter_mint_valid(rdmr, tx)
-      CancelBurn -> cancel_burn_valid(rdmr, tx)
+      CreateForwardMint ->
+        create_forward_mint_valid(transaction, policy_id, token_name)
+      EnterForwardMint ->
+        enter_forward_mint_valid(
+          transaction,
+          policy_id,
+          token_name,
+          collateral_validator,
+        )
+      CancelBurn -> cancel_burn_valid(transaction, policy_id, token_name)
     }
   }
 
