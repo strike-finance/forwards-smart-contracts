@@ -1,10 +1,13 @@
-use aiken/list
-use aiken/transaction.{
-  InlineDatum, Output, ScriptContext, Spend, find_script_outputs,
+use aiken/collection/list
+use cardano/address.{Address, from_verification_key}
+use cardano/assets.{quantity_of}
+use cardano/script_context.{ScriptContext, Spending}
+use cardano/transaction.{InlineDatum, Output, Transaction, find_script_outputs}
+use types.{
+  AddressHash, AgreementDatum, AssetClass, BothSidesDepositAgreement,
+  CollateralDatum, CollateralRedeemerAction, LiquidateCollateral,
+  OneSideDepositAgreement,
 }
-use aiken/transaction/credential.{Address, from_verification_key}
-use aiken/transaction/value.{quantity_of}
-use types.{AddressHash, AgreementDatum, AssetClass, CollateralDatum}
 use utils.{
   get_address_hash_based_on_party, get_address_outputs,
   get_asset_amount_locked_based_on_party, get_asset_locked_based_on_party,
@@ -12,30 +15,20 @@ use utils.{
   get_party_has_deposited_asset, get_validators_inputs,
 }
 
-// 0 = issuer, 1 = obligee
-type CollateralRedeemer {
-  OneSideDepositAgreement(Int)
-  BothSidesDepositAgreement
-  LiquidateCollateral(Int)
-}
-
-type Redeemer {
-  action: CollateralRedeemer,
-}
-
 fn one_side_deposit_agreement(
-  datum: CollateralDatum,
+  datum: Option<CollateralDatum>,
   ctx: ScriptContext,
   deposit_party: Int,
 ) {
+  expect Some(datum) = datum
   // update the collateral datum, to say true, check the asset has actually been deposited, make sure deadline not passed, and it has not been deposited already 
-  expect Spend(my_output_reference) = ctx.purpose
+  expect Spending(my_output_reference, _) = ctx.info
   expect Some(input_from_validator) =
     ctx.transaction.inputs
       |> transaction.find_input(my_output_reference)
 
   let outputs_to_validator: List<Output> =
-    get_address_outputs(ctx, input_from_validator.output.address)
+    get_address_outputs(ctx.transaction, input_from_validator.output.address)
   expect Some(output_to_validator) = list.at(outputs_to_validator, 0)
   expect InlineDatum(output_datum) = output_to_validator.datum
   expect output_datum_typed: CollateralDatum = output_datum
@@ -44,7 +37,7 @@ fn one_side_deposit_agreement(
 
   let only_one_validator_output: Bool = list.length(outputs_to_validator) == 1
   let only_one_validator_input: Bool =
-    list.length(get_validators_inputs(ctx)) == 1
+    list.length(get_validators_inputs(ctx.transaction)) == 1
   let updated_datum_correct: Bool = output_datum_typed == expected_new_datum
 
   let deadline_not_passed: Bool =
@@ -82,14 +75,15 @@ fn one_side_deposit_agreement(
 }
 
 fn both_sides_deposit_agreement(
-  datum: CollateralDatum,
+  datum: Option<CollateralDatum>,
   ctx: ScriptContext,
   agreement_validator: ByteArray,
 ) {
-  // make sure two outs to agreement validator, the datum is correct, make sure deadline not passed 
+  expect Some(datum) = datum
 
+  // make sure two outs to agreement validator, the datum is correct, make sure deadline not passed 
   let only_one_validator_input: Bool =
-    list.length(get_validators_inputs(ctx)) == 1
+    list.length(get_validators_inputs(ctx.transaction)) == 1
 
   let outputs_to_consume_forwards_validator: List<Output> =
     find_script_outputs(ctx.transaction.outputs, agreement_validator)
@@ -164,11 +158,12 @@ fn both_sides_deposit_agreement(
 }
 
 fn consume_collateral_valid(
-  datum: CollateralDatum,
+  datum: Option<CollateralDatum>,
   ctx: ScriptContext,
   party: Int,
   liquidate_validator: ByteArray,
 ) {
+  expect Some(datum) = datum
   let party_address_hash: AddressHash =
     get_address_hash_based_on_party(datum, party)
 
@@ -213,13 +208,17 @@ fn consume_collateral_valid(
   }
 }
 
-validator(agreement_validator: ByteArray, liquidate_validator: ByteArray) {
-  fn spend(
-    datum: CollateralDatum,
-    redeemer: Redeemer,
+validator collateral(
+  agreement_validator: ByteArray,
+  liquidate_validator: ByteArray,
+) {
+  spend(
+    datum: Option<CollateralDatum>,
+    rdmr: CollateralRedeemerAction,
     ctx: ScriptContext,
-  ) -> Bool {
-    when redeemer.action is {
+    _self: Transaction,
+  ) {
+    when rdmr is {
       OneSideDepositAgreement(deposit_party) ->
         one_side_deposit_agreement(datum, ctx, deposit_party)
 
@@ -234,5 +233,9 @@ validator(agreement_validator: ByteArray, liquidate_validator: ByteArray) {
           liquidate_validator,
         )
     }
+  }
+
+  else(_) {
+    fail
   }
 }

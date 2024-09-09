@@ -1,29 +1,24 @@
-use aiken/list
-use aiken/transaction.{InlineDatum, Output, ScriptContext, find_script_outputs}
-use aiken/transaction/value.{AssetName, PolicyId, quantity_of}
-use types.{CollateralDatum, ForwardsDatum, ObligeeInfo}
+use aiken/collection/list
+use cardano/assets.{PolicyId, quantity_of}
+use cardano/transaction.{InlineDatum, Output, Transaction, find_script_outputs}
+use types.{
+  AcceptForwardsContract, CancelBurn, CancelForwardsContract, CollateralDatum,
+  EnterMint, ForwardsDatum, ForwardsRedeemer, MintRedeemer, ObligeeInfo,
+}
 use utils.{get_validators_inputs}
 
-type ForwardsRedeemer {
-  AcceptForwardsContract(ObligeeInfo)
-  CancelforwardsContract
-}
-
-type Redeemer {
-  action: ForwardsRedeemer,
-}
-
 fn accept_forwards_contract_valid(
-  datum: ForwardsDatum,
-  ctx: ScriptContext,
+  datum: Option<ForwardsDatum>,
+  transaction: Transaction,
   collateral_validator: ByteArray,
   obligee_info: ObligeeInfo,
 ) {
+  expect Some(datum) = datum
   let only_one_validator_input: Bool =
-    list.length(get_validators_inputs(ctx)) == 1
+    list.length(get_validators_inputs(transaction)) == 1
 
   let outputs_to_collateral_validator: List<Output> =
-    find_script_outputs(ctx.transaction.outputs, collateral_validator)
+    find_script_outputs(transaction.outputs, collateral_validator)
   let only_one_output_to_collateral_validator =
     list.length(outputs_to_collateral_validator) == 1
 
@@ -71,20 +66,33 @@ fn accept_forwards_contract_valid(
   only_one_validator_input && only_one_output_to_collateral_validator && expected_asset_locked_valid && expected_strike_collateral_asset_locked_valid
 }
 
-fn cancel_forwards_contract_valid(datum: ForwardsDatum, ctx: ScriptContext) {
+fn cancel_forwards_contract_valid(
+  datum: Option<ForwardsDatum>,
+  transaction: Transaction,
+) {
+  expect Some(datum) = datum
   let must_be_signed_by_issuer =
-    list.has(ctx.transaction.extra_signatories, datum.issuer_address_hash)
+    list.has(transaction.extra_signatories, datum.issuer_address_hash)
 
   must_be_signed_by_issuer
 }
 
-validator(
-  collateral_validator: ByteArray,
-  _asset_name: AssetName,
-  _policy_id: PolicyId,
-) {
-  fn spend(datum: ForwardsDatum, redeemer: Redeemer, ctx: ScriptContext) -> Bool {
-    when redeemer.action is {
+fn enter_mint_valid(rdmr: MintRedeemer, tx: Transaction) -> Bool {
+  False
+}
+
+fn cancel_burn_valid(rdmr: MintRedeemer, tx: Transaction) -> Bool {
+  False
+}
+
+validator forwards(collateral_validator: ByteArray) {
+  spend(
+    datum: Option<ForwardsDatum>,
+    redeemer: ForwardsRedeemer,
+    _0: Data,
+    ctx: Transaction,
+  ) {
+    when redeemer is {
       AcceptForwardsContract(obligee_info) ->
         accept_forwards_contract_valid(
           datum,
@@ -93,7 +101,18 @@ validator(
           obligee_info,
         )
 
-      CancelforwardsContract -> cancel_forwards_contract_valid(datum, ctx)
+      CancelForwardsContract -> cancel_forwards_contract_valid(datum, ctx)
     }
+  }
+
+  mint(rdmr: MintRedeemer, policy_id: PolicyId, tx: Transaction) {
+    when rdmr is {
+      EnterMint -> enter_mint_valid(rdmr, tx)
+      CancelBurn -> cancel_burn_valid(rdmr, tx)
+    }
+  }
+
+  else(_) {
+    fail
   }
 }

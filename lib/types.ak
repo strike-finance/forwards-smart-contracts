@@ -1,6 +1,5 @@
-use aiken/hash.{Blake2b_224, Hash}
-use aiken/transaction/credential.{VerificationKey}
-use aiken/transaction/value.{AssetName, PolicyId}
+use aiken/crypto.{Blake2b_224, Hash, VerificationKey}
+use cardano/assets.{AssetName, PolicyId}
 
 pub type AssetClass {
   policy_id: PolicyId,
@@ -56,4 +55,21 @@ pub type AgreementDatum {
 
 pub type ObligeeInfo {
   obligee_address_hash: AddressHash,
+}
+
+// 0 = issuer, 1 = obligee
+pub type CollateralRedeemerAction {
+  OneSideDepositAgreement(Int)
+  BothSidesDepositAgreement
+  LiquidateCollateral(Int)
+}
+
+pub type ForwardsRedeemer {
+  AcceptForwardsContract(ObligeeInfo)
+  CancelForwardsContract
+}
+
+pub type MintRedeemer {
+  EnterMint
+  CancelBurn
 }
