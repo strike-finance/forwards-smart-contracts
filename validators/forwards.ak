@@ -2,9 +2,9 @@ use aiken/collection/list
 use cardano/assets.{PolicyId, quantity_of}
 use cardano/transaction.{InlineDatum, Output, Transaction, find_script_outputs}
 use types.{
-  AcceptForwardsContract, CancelBurn, CancelForwardsContract, CollateralDatum,
+  AcceptForwardsContract, CancelForwardsContract, CollateralDatum,
   CreateForwardMint, EnterForwardMint, ForwardsDatum, ForwardsRedeemer,
-  LiquidateBurn, MintRedeemer, ObligeeInfo,
+  LiquidateBurn, MintRedeemer, ObligeeInfo, SingleBurn,
 }
 use utils.{get_validators_inputs, validate_token_mint}
 
@@ -123,7 +123,7 @@ fn enter_forward_mint_valid(
   valid_mint && only_one_output_to_collateral_validator && utxo_contains_two_assets && valid_mint_asset
 }
 
-fn cancel_burn_valid(
+fn single_burn_valid(
   transaction: Transaction,
   policy_id: PolicyId,
   token_name: ByteArray,
@@ -179,7 +179,7 @@ validator forwards(token_name: ByteArray, collateral_validator: ByteArray) {
           token_name,
           collateral_validator,
         )
-      CancelBurn -> cancel_burn_valid(transaction, policy_id, token_name)
+      SingleBurn -> single_burn_valid(transaction, policy_id, token_name)
       LiquidateBurn -> liquidate_burn_valid(transaction, policy_id, token_name)
     }
   }

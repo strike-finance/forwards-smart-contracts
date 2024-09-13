@@ -75,6 +75,6 @@ pub type ForwardsRedeemer {
 pub type MintRedeemer {
   CreateForwardMint
   EnterForwardMint
-  CancelBurn
+  SingleBurn
   LiquidateBurn
 }

@@ -15,7 +15,7 @@ validator agreement {
       from_verification_key(datum.utxo_owner_address_hash)
 
     let expected_mint =
-      (datum.mint_asset.policy_id, datum.mint_asset.asset_name, -2)
+      (datum.mint_asset.policy_id, datum.mint_asset.asset_name, -1)
 
     let expiration_date_passed: Bool =
       datum.exercise_contract_date < get_lower_bound(self.validity_range)
