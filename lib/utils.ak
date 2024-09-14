@@ -139,18 +139,19 @@ pub fn get_asset_to_address(
   policy_id: PolicyId,
   asset_name: AssetName,
 ) -> Int {
-  let output_to_address =
-    list.find(
+  let outputs_to_address =
+    list.filter(
       outputs,
       fn(output) {
         output.address.payment_credential == address.payment_credential
       },
     )
 
-  when output_to_address is {
-    Some(output) -> quantity_of(output.value, policy_id, asset_name)
-    None -> 0
-  }
+  list.reduce(
+    outputs_to_address,
+    0,
+    fn(acc, output) { acc + quantity_of(output.value, policy_id, asset_name) },
+  )
 }
 
 pub fn get_asset_to_address_valid(

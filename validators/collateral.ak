@@ -87,10 +87,9 @@ fn both_sides_deposit_agreement(
 ) {
   expect Some(datum) = datum
 
-  // make sure two outs to agreement validator, the datum is correct, make sure deadline not passed 
+  // // make sure two outs to agreement validator, the datum is correct, make sure deadline not passed 
   let only_one_validator_input: Bool =
     list.length(get_validators_inputs(transaction)) == 1
-
   let outputs_to_consume_forwards_validator: List<Output> =
     find_script_outputs(transaction.outputs, agreement_validator)
   let two_outputs_to_agreement_validator =
@@ -187,15 +186,8 @@ fn consume_collateral_valid(
   let party_address_hash: AddressHash =
     get_address_hash_based_on_party(datum, party)
 
-  let current_owner_address: Address = from_verification_key(party_address_hash)
-
-  let amount_to_address_valid: Bool =
-    get_asset_to_address_valid(
-      datum,
-      party,
-      transaction.outputs,
-      current_owner_address,
-    )
+  let must_be_signed_by_owner =
+    list.has(transaction.extra_signatories, party_address_hash)
 
   let party_has_deposited_asset: Bool =
     get_party_has_deposited_asset(datum, party)
@@ -209,7 +201,7 @@ fn consume_collateral_valid(
   let valid_mint: Bool = validate_token_mint(transaction.mint, expected_mint)
 
   let default_case: Bool =
-    deadline_has_passed && party_has_deposited_asset && amount_to_address_valid && valid_mint
+    deadline_has_passed && party_has_deposited_asset && valid_mint && must_be_signed_by_owner
 
   let strike_is_used_as_collateral: Bool =
     datum.each_party_strike_collateral_asset_amount != 0
