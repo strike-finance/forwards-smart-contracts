@@ -1,8 +1,9 @@
 use aiken/collection/list
 use cardano/address.{Address, from_verification_key}
 use cardano/assets.{quantity_of}
-use cardano/script_context.{ScriptContext, Spending}
-use cardano/transaction.{InlineDatum, Output, Transaction, find_script_outputs}
+use cardano/transaction.{
+  InlineDatum, Output, OutputReference, Transaction, find_script_outputs,
+}
 use types.{
   AddressHash, AgreementDatum, AssetClass, BothSidesDepositAgreement,
   CollateralDatum, CollateralRedeemerAction, LiquidateCollateral,
@@ -17,18 +18,18 @@ use utils.{
 
 fn one_side_deposit_agreement(
   datum: Option<CollateralDatum>,
-  ctx: ScriptContext,
+  transaction: Transaction,
   deposit_party: Int,
+  my_output_reference: OutputReference,
 ) {
   expect Some(datum) = datum
-  // update the collateral datum, to say true, check the asset has actually been deposited, make sure deadline not passed, and it has not been deposited already 
-  expect Spending(my_output_reference, _) = ctx.info
-  expect Some(input_from_validator) =
-    ctx.transaction.inputs
-      |> transaction.find_input(my_output_reference)
 
+  // // update the collateral datum, to say true, check the asset has actually been deposited, make sure deadline not passed, and it has not been deposited already 
+  expect Some(input_from_validator) =
+    transaction.inputs
+      |> transaction.find_input(my_output_reference)
   let outputs_to_validator: List<Output> =
-    get_address_outputs(ctx.transaction, input_from_validator.output.address)
+    get_address_outputs(transaction, input_from_validator.output.address)
   expect Some(output_to_validator) = list.at(outputs_to_validator, 0)
   expect InlineDatum(output_datum) = output_to_validator.datum
   expect output_datum_typed: CollateralDatum = output_datum
@@ -37,13 +38,11 @@ fn one_side_deposit_agreement(
 
   let only_one_validator_output: Bool = list.length(outputs_to_validator) == 1
   let only_one_validator_input: Bool =
-    list.length(get_validators_inputs(ctx.transaction)) == 1
+    list.length(get_validators_inputs(transaction)) == 1
   let updated_datum_correct: Bool = output_datum_typed == expected_new_datum
 
   let deadline_not_passed: Bool =
-    datum.exercise_contract_date > get_lower_bound(
-      ctx.transaction.validity_range,
-    )
+    datum.exercise_contract_date > get_lower_bound(transaction.validity_range)
   let collateral_send_back_valid: Bool =
     quantity_of(
       output_to_validator.value,
@@ -83,17 +82,17 @@ fn one_side_deposit_agreement(
 
 fn both_sides_deposit_agreement(
   datum: Option<CollateralDatum>,
-  ctx: ScriptContext,
+  transaction: Transaction,
   agreement_validator: ByteArray,
 ) {
   expect Some(datum) = datum
 
   // make sure two outs to agreement validator, the datum is correct, make sure deadline not passed 
   let only_one_validator_input: Bool =
-    list.length(get_validators_inputs(ctx.transaction)) == 1
+    list.length(get_validators_inputs(transaction)) == 1
 
   let outputs_to_consume_forwards_validator: List<Output> =
-    find_script_outputs(ctx.transaction.outputs, agreement_validator)
+    find_script_outputs(transaction.outputs, agreement_validator)
   let two_outputs_to_agreement_validator =
     list.length(outputs_to_consume_forwards_validator) == 2
 
@@ -173,16 +172,14 @@ fn both_sides_deposit_agreement(
     ) >= datum.issuer_deposit_asset_amount
 
   let deadline_not_passed: Bool =
-    datum.exercise_contract_date > get_lower_bound(
-      ctx.transaction.validity_range,
-    )
+    datum.exercise_contract_date > get_lower_bound(transaction.validity_range)
 
   issuer_utxo_contains_asset && obligee_utxo_contains_asset && expected_issuer_utxo_contains_correct_asset && expected_obligee_contains_correct_asset && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed
 }
 
 fn consume_collateral_valid(
   datum: Option<CollateralDatum>,
-  ctx: ScriptContext,
+  transaction: Transaction,
   party: Int,
   liquidate_validator: ByteArray,
 ) {
@@ -196,7 +193,7 @@ fn consume_collateral_valid(
     get_asset_to_address_valid(
       datum,
       party,
-      ctx.transaction.outputs,
+      transaction.outputs,
       current_owner_address,
     )
 
@@ -204,15 +201,12 @@ fn consume_collateral_valid(
     get_party_has_deposited_asset(datum, party)
 
   let deadline_has_passed: Bool =
-    datum.exercise_contract_date < get_lower_bound(
-      ctx.transaction.validity_range,
-    )
+    datum.exercise_contract_date < get_lower_bound(transaction.validity_range)
 
   let expected_mint =
     (datum.mint_asset.policy_id, datum.mint_asset.asset_name, -2)
 
-  let valid_mint: Bool =
-    validate_token_mint(ctx.transaction.mint, expected_mint)
+  let valid_mint: Bool = validate_token_mint(transaction.mint, expected_mint)
 
   let default_case: Bool =
     deadline_has_passed && party_has_deposited_asset && amount_to_address_valid && valid_mint
@@ -222,7 +216,7 @@ fn consume_collateral_valid(
 
   if strike_is_used_as_collateral {
     let outputs_to_liquidate_validator: List<Output> =
-      find_script_outputs(ctx.transaction.outputs, liquidate_validator)
+      find_script_outputs(transaction.outputs, liquidate_validator)
 
     expect Some(output_to_collateral_validator) =
       list.head(outputs_to_liquidate_validator)
@@ -247,20 +241,25 @@ validator collateral(
   spend(
     datum: Option<CollateralDatum>,
     rdmr: CollateralRedeemerAction,
-    ctx: ScriptContext,
-    _self: Transaction,
+    my_output_reference: OutputReference,
+    self: Transaction,
   ) {
     when rdmr is {
       OneSideDepositAgreement(deposit_party) ->
-        one_side_deposit_agreement(datum, ctx, deposit_party)
+        one_side_deposit_agreement(
+          datum,
+          self,
+          deposit_party,
+          my_output_reference,
+        )
 
       BothSidesDepositAgreement ->
-        both_sides_deposit_agreement(datum, ctx, agreement_validator)
+        both_sides_deposit_agreement(datum, self, agreement_validator)
 
       LiquidateCollateral(liquidate_party) ->
         consume_collateral_valid(
           datum,
-          ctx,
+          self,
           liquidate_party,
           liquidate_validator,
         )

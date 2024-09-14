@@ -68,16 +68,19 @@ fn accept_forwards_contract_valid(
   only_one_validator_input && only_one_output_to_collateral_validator && expected_asset_locked_valid && expected_strike_collateral_asset_locked_valid
 }
 
-// asset is burnt 
+// asset is burnt and signed by issuer
 fn cancel_forwards_contract_valid(
   datum: Option<ForwardsDatum>,
   transaction: Transaction,
+  token_name: ByteArray,
 ) {
   expect Some(datum) = datum
   let must_be_signed_by_issuer =
     list.has(transaction.extra_signatories, datum.issuer_address_hash)
 
-  must_be_signed_by_issuer
+  let expected_mint = (datum.mint_asset.policy_id, token_name, -1)
+  let valid_mint = validate_token_mint(transaction.mint, expected_mint)
+  must_be_signed_by_issuer && valid_mint
 }
 
 fn create_forward_mint_valid(
@@ -164,7 +167,7 @@ validator forwards(token_name: ByteArray, collateral_validator: ByteArray) {
         )
 
       CancelForwardsContract ->
-        cancel_forwards_contract_valid(datum, transaction)
+        cancel_forwards_contract_valid(datum, transaction, token_name)
     }
   }
 
