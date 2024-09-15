@@ -112,16 +112,14 @@ fn create_forward_mint_valid(
         minted_asset_quantity == 1
       },
     )
-
   expect InlineDatum(output_datum) = output_to_forward_contract.datum
-  expect output_datum_typed: CollateralDatum = output_datum
-
+  expect output_datum_typed: ForwardsDatum = output_datum
   let contains_correct_collateral_asset =
     quantity_of(
       output_to_forward_contract.value,
       output_datum_typed.collateral_asset.policy_id,
       output_datum_typed.collateral_asset.asset_name,
-    ) == output_datum_typed.each_party_collateral_asset_amount
+    ) >= output_datum_typed.collateral_asset_amount
 
   let default_case = valid_mint && contains_correct_collateral_asset
 
