@@ -187,6 +187,8 @@ When the parties exercise the forward contract, they can receive their assets.
 - The transaction is signed by the owner specified in `utxo_owner_address_hash`.
 - The minted asset is burnt
 
+Preprod TxId: 9fddb469cfc9430c217b992c08e042d5bfd7722ac1f45c8ec5e80f6482f81fef
+
 ## Links
 
 - [Website](https://www.strikefinance.org/forwards)
