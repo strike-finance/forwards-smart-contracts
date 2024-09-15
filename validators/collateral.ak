@@ -1,5 +1,4 @@
 use aiken/collection/list
-use cardano/address.{Address, from_verification_key}
 use cardano/assets.{quantity_of}
 use cardano/transaction.{
   InlineDatum, Output, OutputReference, Transaction, find_script_outputs,
@@ -12,8 +11,8 @@ use types.{
 use utils.{
   get_address_hash_based_on_party, get_address_outputs,
   get_asset_amount_locked_based_on_party, get_asset_locked_based_on_party,
-  get_asset_to_address_valid, get_datum_based_on_party, get_lower_bound,
-  get_party_has_deposited_asset, get_validators_inputs, validate_token_mint,
+  get_datum_based_on_party, get_lower_bound, get_party_has_deposited_asset,
+  get_validators_inputs, validate_token_mint,
 }
 
 fn one_side_deposit_agreement(
@@ -50,13 +49,6 @@ fn one_side_deposit_agreement(
       datum.collateral_asset.asset_name,
     ) >= datum.each_party_collateral_asset_amount
 
-  let strike_collateral_asset_send_back_valid: Bool =
-    quantity_of(
-      output_to_validator.value,
-      datum.strike_collateral_asset.policy_id,
-      datum.strike_collateral_asset.asset_name,
-    ) >= datum.each_party_strike_collateral_asset_amount
-
   let expected_asset_locked: AssetClass =
     get_asset_locked_based_on_party(datum, deposit_party)
 
@@ -77,7 +69,23 @@ fn one_side_deposit_agreement(
       datum.mint_asset.asset_name,
     ) == 2
 
-  mint_asset_not_consumed && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && collateral_send_back_valid && asset_locked_valid && strike_collateral_asset_send_back_valid
+  let default_case =
+    mint_asset_not_consumed && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && collateral_send_back_valid && asset_locked_valid
+
+  let strike_is_used_as_collateral: Bool =
+    datum.each_party_strike_collateral_asset_amount > 0
+
+  if strike_is_used_as_collateral {
+    let strike_collateral_asset_send_back_valid: Bool =
+      quantity_of(
+        output_to_validator.value,
+        datum.strike_collateral_asset.policy_id,
+        datum.strike_collateral_asset.asset_name,
+      ) >= datum.each_party_strike_collateral_asset_amount
+    default_case && strike_collateral_asset_send_back_valid
+  } else {
+    default_case
+  }
 }
 
 fn both_sides_deposit_agreement(
@@ -204,7 +212,7 @@ fn consume_collateral_valid(
     deadline_has_passed && party_has_deposited_asset && valid_mint && must_be_signed_by_owner
 
   let strike_is_used_as_collateral: Bool =
-    datum.each_party_strike_collateral_asset_amount != 0
+    datum.each_party_strike_collateral_asset_amount > 0
 
   if strike_is_used_as_collateral {
     let outputs_to_liquidate_validator: List<Output> =

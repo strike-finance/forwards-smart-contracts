@@ -58,14 +58,23 @@ fn accept_forwards_contract_valid(
       expected_collateral_datum.collateral_asset.asset_name,
     ) >= expected_collateral_datum.each_party_collateral_asset_amount * 2
 
-  let expected_strike_collateral_asset_locked_valid =
-    quantity_of(
-      output_to_collater_utxo.value,
-      expected_collateral_datum.strike_collateral_asset.policy_id,
-      expected_collateral_datum.strike_collateral_asset.asset_name,
-    ) >= expected_collateral_datum.each_party_strike_collateral_asset_amount * 2
+  let default_case =
+    only_one_validator_input && only_one_output_to_collateral_validator && expected_asset_locked_valid
 
-  only_one_validator_input && only_one_output_to_collateral_validator && expected_asset_locked_valid && expected_strike_collateral_asset_locked_valid
+  let strike_is_used_as_collateral: Bool =
+    expected_collateral_datum.each_party_strike_collateral_asset_amount > 0
+
+  if strike_is_used_as_collateral {
+    let expected_strike_collateral_asset_locked_valid =
+      quantity_of(
+        output_to_collater_utxo.value,
+        expected_collateral_datum.strike_collateral_asset.policy_id,
+        expected_collateral_datum.strike_collateral_asset.asset_name,
+      ) >= expected_collateral_datum.each_party_strike_collateral_asset_amount * 2
+    expected_strike_collateral_asset_locked_valid && default_case
+  } else {
+    default_case
+  }
 }
 
 // asset is burnt and signed by issuer
@@ -92,7 +101,44 @@ fn create_forward_mint_valid(
 
   let valid_mint = validate_token_mint(transaction.mint, expected_mint)
 
-  valid_mint
+  let outputs: List<Output> = transaction.outputs
+
+  expect Some(output_to_forward_contract) =
+    list.find(
+      outputs,
+      fn(output) {
+        let minted_asset_quantity =
+          quantity_of(output.value, policy_id, token_name)
+        minted_asset_quantity == 1
+      },
+    )
+
+  expect InlineDatum(output_datum) = output_to_forward_contract.datum
+  expect output_datum_typed: CollateralDatum = output_datum
+
+  let contains_correct_collateral_asset =
+    quantity_of(
+      output_to_forward_contract.value,
+      output_datum_typed.collateral_asset.policy_id,
+      output_datum_typed.collateral_asset.asset_name,
+    ) == output_datum_typed.each_party_collateral_asset_amount
+
+  let default_case = valid_mint && contains_correct_collateral_asset
+
+  let strike_is_used_as_collateral: Bool =
+    output_datum_typed.each_party_strike_collateral_asset_amount > 0
+
+  if strike_is_used_as_collateral {
+    let contains_correct_strike_collateral_asset =
+      quantity_of(
+        output_to_forward_contract.value,
+        output_datum_typed.strike_collateral_asset.policy_id,
+        output_datum_typed.strike_collateral_asset.asset_name,
+      ) == output_datum_typed.each_party_strike_collateral_asset_amount
+    contains_correct_strike_collateral_asset && default_case
+  } else {
+    default_case
+  }
 }
 
 fn enter_forward_mint_valid(
