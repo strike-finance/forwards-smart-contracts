@@ -1,4 +1,5 @@
 use aiken/collection/list
+use cardano/address.{from_script}
 use cardano/assets.{PolicyId, quantity_of}
 use cardano/transaction.{InlineDatum, Output, Transaction, find_script_outputs}
 use types.{
@@ -109,7 +110,11 @@ fn create_forward_mint_valid(
       fn(output) {
         let minted_asset_quantity =
           quantity_of(output.value, policy_id, token_name)
-        minted_asset_quantity == 1
+
+        let script_address = from_script(policy_id)
+
+        let output_is_to_fowards_validator = output.address == script_address
+        minted_asset_quantity == 1 && output_is_to_fowards_validator
       },
     )
   expect InlineDatum(output_datum) = output_to_forward_contract.datum
