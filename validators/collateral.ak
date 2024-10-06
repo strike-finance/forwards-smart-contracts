@@ -1,12 +1,13 @@
 use aiken/collection/list
+use cardano/address.{from_verification_key}
 use cardano/assets.{quantity_of}
 use cardano/transaction.{
   InlineDatum, Output, OutputReference, Transaction, find_script_outputs,
 }
 use types.{
   AddressHash, AgreementDatum, AssetClass, BothSidesDepositAgreement,
-  CollateralDatum, CollateralRedeemerAction, LiquidateCollateral,
-  OneSideDepositAgreement,
+  CollateralDatum, CollateralRedeemerAction, LiquidateBothParties,
+  LiquidateCollateral, OneSideDepositAgreement,
 }
 use utils.{
   get_address_hash_based_on_party, get_address_outputs,
@@ -218,12 +219,12 @@ fn consume_collateral_valid(
     let outputs_to_liquidate_validator: List<Output> =
       find_script_outputs(transaction.outputs, liquidate_validator)
 
-    expect Some(output_to_collateral_validator) =
+    expect Some(output_to_liquidate_validator) =
       list.head(outputs_to_liquidate_validator)
 
     let strike_collateral_asset_burnt: Bool =
       quantity_of(
-        output_to_collateral_validator.value,
+        output_to_liquidate_validator.value,
         datum.strike_collateral_asset.policy_id,
         datum.strike_collateral_asset.asset_name,
       ) >= datum.each_party_strike_collateral_asset_amount
@@ -234,9 +235,66 @@ fn consume_collateral_valid(
   }
 }
 
+pub fn liquidate_both_parties_valid(
+  datum: Option<CollateralDatum>,
+  transaction: Transaction,
+  liquidate_validator: ByteArray,
+  strike_consume_address_hash: AddressHash,
+) {
+  expect Some(datum) = datum
+
+  let deadline_has_passed: Bool =
+    datum.exercise_contract_date < get_lower_bound(transaction.validity_range)
+
+  let strike_address = from_verification_key(strike_consume_address_hash)
+
+  let outputs_send_to_strike_consume_address: List<Output> =
+    list.filter(
+      transaction.outputs,
+      fn(output) { output.address == strike_address },
+    )
+
+  expect Some(output_send_to_strike_consume_address) =
+    list.head(outputs_send_to_strike_consume_address)
+
+  let both_collateral_assets_sent: Bool =
+    quantity_of(
+      output_send_to_strike_consume_address.value,
+      datum.collateral_asset.policy_id,
+      datum.collateral_asset.asset_name,
+    ) >= datum.each_party_collateral_asset_amount * 2
+
+  let outputs_to_liquidate_validator: List<Output> =
+    find_script_outputs(transaction.outputs, liquidate_validator)
+
+  expect Some(output_to_liquidate_validator) =
+    list.head(outputs_to_liquidate_validator)
+
+  let strike_collateral_asset_burnt: Bool =
+    quantity_of(
+      output_to_liquidate_validator.value,
+      datum.strike_collateral_asset.policy_id,
+      datum.strike_collateral_asset.asset_name,
+    ) >= datum.each_party_strike_collateral_asset_amount * 2
+
+  let both_party_has_not_deposited_asset: Bool =
+    !get_party_has_deposited_asset(datum, 0) && !get_party_has_deposited_asset(
+      datum,
+      1,
+    )
+
+  let expected_mint =
+    (datum.mint_asset.policy_id, datum.mint_asset.asset_name, -2)
+
+  let valid_mint: Bool = validate_token_mint(transaction.mint, expected_mint)
+
+  deadline_has_passed && both_collateral_assets_sent && strike_collateral_asset_burnt && both_party_has_not_deposited_asset && valid_mint
+}
+
 validator collateral(
   agreement_validator: ByteArray,
   liquidate_validator: ByteArray,
+  strike_consume_address_hash: AddressHash,
 ) {
   spend(
     datum: Option<CollateralDatum>,
@@ -262,6 +320,14 @@ validator collateral(
           self,
           liquidate_party,
           liquidate_validator,
+        )
+
+      LiquidateBothParties ->
+        liquidate_both_parties_valid(
+          datum,
+          self,
+          liquidate_validator,
+          strike_consume_address_hash,
         )
     }
   }

@@ -217,6 +217,8 @@ validator forwards(token_name: ByteArray, collateral_validator: ByteArray) {
 
       CancelForwardsContract ->
         cancel_forwards_contract_valid(datum, transaction, token_name)
+
+        
     }
   }
 

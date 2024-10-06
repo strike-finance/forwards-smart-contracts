@@ -65,6 +65,7 @@ pub type CollateralRedeemerAction {
   OneSideDepositAgreement(Int)
   BothSidesDepositAgreement
   LiquidateCollateral(Int)
+  LiquidateBothParties
 }
 
 pub type ForwardsRedeemer {
