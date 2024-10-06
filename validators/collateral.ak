@@ -270,13 +270,6 @@ pub fn liquidate_both_parties_valid(
   expect Some(output_to_liquidate_validator) =
     list.head(outputs_to_liquidate_validator)
 
-  let strike_collateral_asset_burnt: Bool =
-    quantity_of(
-      output_to_liquidate_validator.value,
-      datum.strike_collateral_asset.policy_id,
-      datum.strike_collateral_asset.asset_name,
-    ) >= datum.each_party_strike_collateral_asset_amount * 2
-
   let both_party_has_not_deposited_asset: Bool =
     !get_party_has_deposited_asset(datum, 0) && !get_party_has_deposited_asset(
       datum,
@@ -288,7 +281,21 @@ pub fn liquidate_both_parties_valid(
 
   let valid_mint: Bool = validate_token_mint(transaction.mint, expected_mint)
 
-  deadline_has_passed && both_collateral_assets_sent && strike_collateral_asset_burnt && both_party_has_not_deposited_asset && valid_mint
+  let default_case: Bool =
+    deadline_has_passed && both_collateral_assets_sent && both_party_has_not_deposited_asset && valid_mint
+
+  if datum.each_party_strike_collateral_asset_amount > 0 {
+    let strike_collateral_asset_burnt: Bool =
+      quantity_of(
+        output_to_liquidate_validator.value,
+        datum.strike_collateral_asset.policy_id,
+        datum.strike_collateral_asset.asset_name,
+      ) >= datum.each_party_strike_collateral_asset_amount * 2
+
+    strike_collateral_asset_burnt && default_case
+  } else {
+    default_case
+  }
 }
 
 validator collateral(
