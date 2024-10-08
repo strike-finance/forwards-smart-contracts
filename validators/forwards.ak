@@ -1,5 +1,4 @@
 use aiken/collection/list
-use cardano/address.{from_script}
 use cardano/assets.{PolicyId, quantity_of}
 use cardano/transaction.{InlineDatum, Output, Transaction, find_script_outputs}
 use types.{
@@ -7,7 +6,7 @@ use types.{
   CreateForwardMint, EnterForwardMint, ForwardsDatum, ForwardsRedeemer,
   LiquidateBurn, MintRedeemer, ObligeeInfo, SingleBurn,
 }
-use utils.{get_validators_inputs, validate_token_mint}
+use utils.{get_script_hash, get_validators_inputs, validate_token_mint}
 
 fn accept_forwards_contract_valid(
   datum: Option<ForwardsDatum>,
@@ -111,12 +110,10 @@ fn create_forward_mint_valid(
         let minted_asset_quantity =
           quantity_of(output.value, policy_id, token_name)
 
-        let script_address = from_script(policy_id)
-
-        let output_is_to_fowards_validator = output.address == script_address
-        minted_asset_quantity == 1 && output_is_to_fowards_validator
+        minted_asset_quantity == 1
       },
     )
+
   expect InlineDatum(output_datum) = output_to_forward_contract.datum
   expect output_datum_typed: ForwardsDatum = output_datum
   let contains_correct_collateral_asset =
@@ -126,7 +123,12 @@ fn create_forward_mint_valid(
       output_datum_typed.collateral_asset.asset_name,
     ) >= output_datum_typed.collateral_asset_amount
 
-  let default_case = valid_mint && contains_correct_collateral_asset
+  let output_script_hash = get_script_hash(output_to_forward_contract.address)
+
+  let output_is_to_forward_validator = output_script_hash == policy_id
+
+  let default_case =
+    valid_mint && contains_correct_collateral_asset && output_is_to_forward_validator
 
   let strike_is_used_as_collateral: Bool =
     output_datum_typed.each_party_strike_collateral_asset_amount > 0
