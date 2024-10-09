@@ -267,9 +267,6 @@ pub fn liquidate_both_parties_valid(
   let outputs_to_liquidate_validator: List<Output> =
     find_script_outputs(transaction.outputs, liquidate_validator)
 
-  expect Some(output_to_liquidate_validator) =
-    list.head(outputs_to_liquidate_validator)
-
   let both_party_has_not_deposited_asset: Bool =
     !get_party_has_deposited_asset(datum, 0) && !get_party_has_deposited_asset(
       datum,
@@ -288,6 +285,8 @@ pub fn liquidate_both_parties_valid(
     deadline_has_passed && both_collateral_assets_sent && both_party_has_not_deposited_asset && valid_mint && only_one_validator_input
 
   if datum.each_party_strike_collateral_asset_amount > 0 {
+    expect Some(output_to_liquidate_validator) =
+      list.head(outputs_to_liquidate_validator)
     let strike_collateral_asset_burnt: Bool =
       quantity_of(
         output_to_liquidate_validator.value,
