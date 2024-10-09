@@ -1,4 +1,5 @@
 use aiken/collection/list
+use cardano/address.{StakeCredential}
 use cardano/assets.{quantity_of}
 use cardano/transaction.{
   InlineDatum, Output, OutputReference, Transaction, find_script_outputs,
@@ -20,6 +21,7 @@ fn one_side_deposit_agreement(
   transaction: Transaction,
   deposit_party: Int,
   my_output_reference: OutputReference,
+  strike_stake_credential: StakeCredential,
 ) {
   expect Some(datum) = datum
 
@@ -38,6 +40,7 @@ fn one_side_deposit_agreement(
   let only_one_validator_output: Bool = list.length(outputs_to_validator) == 1
   let only_one_validator_input: Bool =
     list.length(get_validators_inputs(transaction)) == 1
+
   let updated_datum_correct: Bool = output_datum_typed == expected_new_datum
 
   let deadline_not_passed: Bool =
@@ -69,8 +72,14 @@ fn one_side_deposit_agreement(
       datum.mint_asset.asset_name,
     ) == 2
 
+  expect Some(output_stake_credential) =
+    output_to_validator.address.stake_credential
+
+  let stake_credential_is_valid =
+    output_stake_credential == strike_stake_credential
+
   let default_case =
-    mint_asset_not_consumed && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && collateral_send_back_valid && asset_locked_valid
+    stake_credential_is_valid && mint_asset_not_consumed && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && collateral_send_back_valid && asset_locked_valid
 
   let strike_is_used_as_collateral: Bool =
     datum.each_party_strike_collateral_asset_amount > 0
@@ -92,6 +101,7 @@ fn both_sides_deposit_agreement(
   datum: Option<CollateralDatum>,
   transaction: Transaction,
   agreement_validator: ByteArray,
+  strike_stake_credential: StakeCredential,
 ) {
   expect Some(datum) = datum
 
@@ -181,7 +191,16 @@ fn both_sides_deposit_agreement(
   let deadline_not_passed: Bool =
     datum.exercise_contract_date > get_lower_bound(transaction.validity_range)
 
-  issuer_utxo_contains_asset && obligee_utxo_contains_asset && expected_issuer_utxo_contains_correct_asset && expected_obligee_contains_correct_asset && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed
+  expect Some(obligee_stake_credential) =
+    expected_obligee_utxo.address.stake_credential
+
+  expect Some(issuer_stake_credential) =
+    expected_issuer_utxo.address.stake_credential
+
+  let stake_credential_is_valid =
+    obligee_stake_credential == strike_stake_credential && issuer_stake_credential == strike_stake_credential
+
+  stake_credential_is_valid && issuer_utxo_contains_asset && obligee_utxo_contains_asset && expected_issuer_utxo_contains_correct_asset && expected_obligee_contains_correct_asset && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && stake_credential_is_valid
 }
 
 fn consume_collateral_valid(
@@ -237,6 +256,7 @@ fn consume_collateral_valid(
 validator collateral(
   agreement_validator: ByteArray,
   liquidate_validator: ByteArray,
+  strike_stake_credential: StakeCredential,
 ) {
   spend(
     datum: Option<CollateralDatum>,
@@ -251,10 +271,16 @@ validator collateral(
           self,
           deposit_party,
           my_output_reference,
+          strike_stake_credential,
         )
 
       BothSidesDepositAgreement ->
-        both_sides_deposit_agreement(datum, self, agreement_validator)
+        both_sides_deposit_agreement(
+          datum,
+          self,
+          agreement_validator,
+          strike_stake_credential,
+        )
 
       LiquidateCollateral(liquidate_party) ->
         consume_collateral_valid(
