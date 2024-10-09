@@ -281,8 +281,11 @@ pub fn liquidate_both_parties_valid(
 
   let valid_mint: Bool = validate_token_mint(transaction.mint, expected_mint)
 
+  let only_one_validator_input: Bool =
+    list.length(get_validators_inputs(transaction)) == 1
+
   let default_case: Bool =
-    deadline_has_passed && both_collateral_assets_sent && both_party_has_not_deposited_asset && valid_mint
+    deadline_has_passed && both_collateral_assets_sent && both_party_has_not_deposited_asset && valid_mint && only_one_validator_input
 
   if datum.each_party_strike_collateral_asset_amount > 0 {
     let strike_collateral_asset_burnt: Bool =
