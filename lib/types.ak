@@ -1,4 +1,4 @@
-use aiken/crypto.{Blake2b_224, Hash, VerificationKey}
+use aiken/crypto.{Blake2b_224, Hash, Script, VerificationKey}
 use cardano/assets.{AssetName, PolicyId}
 
 pub type AssetClass {
@@ -8,6 +8,9 @@ pub type AssetClass {
 
 pub type AddressHash =
   Hash<Blake2b_224, VerificationKey>
+
+pub type ScriptHash =
+  Hash<Blake2b_224, Script>
 
 pub type POSIXTime =
   Int
