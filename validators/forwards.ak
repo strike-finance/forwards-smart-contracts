@@ -239,6 +239,8 @@ validator forwards(
 
       CancelForwardsContract ->
         cancel_forwards_contract_valid(datum, transaction, token_name)
+
+        
     }
   }
 
