@@ -1,10 +1,18 @@
 use aiken/collection/dict
 use aiken/collection/list
+use aiken/crypto.{ScriptHash}
 use aiken/interval.{Finite}
 use cardano/address.{Address, Credential, Script}
 use cardano/assets.{AssetName, PolicyId, Value, flatten, quantity_of, tokens}
 use cardano/transaction.{Input, Output, Transaction, ValidityRange}
 use types.{AddressHash, AssetClass, CollateralDatum}
+
+pub fn get_script_hash(address: Address) -> ScriptHash {
+  when address.payment_credential is {
+    Script(validator_hash) -> validator_hash
+    _ -> fail
+  }
+}
 
 pub fn is_script_credential(credential: Credential) -> Bool {
   when credential is {
