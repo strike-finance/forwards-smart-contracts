@@ -79,7 +79,7 @@ fn accept_forwards_contract_valid(
         expected_collateral_datum.strike_collateral_asset.policy_id,
         expected_collateral_datum.strike_collateral_asset.asset_name,
       ) >= expected_collateral_datum.each_party_strike_collateral_asset_amount * 2
-    expected_strike_collateral_asset_locked_valid
+    default_case && expected_strike_collateral_asset_locked_valid
   } else {
     default_case
   }
@@ -155,7 +155,7 @@ fn create_forward_mint_valid(
         output_datum_typed.strike_collateral_asset.policy_id,
         output_datum_typed.strike_collateral_asset.asset_name,
       ) == output_datum_typed.each_party_strike_collateral_asset_amount
-    contains_correct_strike_collateral_asset && default_case
+    default_case && contains_correct_strike_collateral_asset
   } else {
     default_case
   }
@@ -239,8 +239,6 @@ validator forwards(
 
       CancelForwardsContract ->
         cancel_forwards_contract_valid(datum, transaction, token_name)
-
-        
     }
   }
 
