@@ -13,7 +13,7 @@ use utils.{
   get_address_hash_based_on_party, get_address_outputs,
   get_asset_amount_locked_based_on_party, get_asset_locked_based_on_party,
   get_datum_based_on_party, get_lower_bound, get_party_has_deposited_asset,
-  get_validators_inputs, validate_token_mint,
+  get_upper_bound, get_validators_inputs, validate_token_mint,
 }
 
 fn one_side_deposit_agreement(
@@ -44,7 +44,7 @@ fn one_side_deposit_agreement(
   let updated_datum_correct: Bool = output_datum_typed == expected_new_datum
 
   let deadline_not_passed: Bool =
-    datum.exercise_contract_date > get_lower_bound(transaction.validity_range)
+    datum.exercise_contract_date > get_upper_bound(transaction.validity_range)
   let collateral_send_back_valid: Bool =
     quantity_of(
       output_to_validator.value,
@@ -189,7 +189,7 @@ fn both_sides_deposit_agreement(
     ) >= datum.issuer_deposit_asset_amount
 
   let deadline_not_passed: Bool =
-    datum.exercise_contract_date > get_lower_bound(transaction.validity_range)
+    datum.exercise_contract_date > get_upper_bound(transaction.validity_range)
 
   expect Some(obligee_stake_credential) =
     expected_obligee_utxo.address.stake_credential

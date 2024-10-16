@@ -33,6 +33,11 @@ pub fn get_lower_bound(range: ValidityRange) -> Int {
   lower_bound
 }
 
+pub fn get_upper_bound(range: ValidityRange) -> Int {
+  expect Finite(upper_bound) = range.upper_bound.bound_type
+  upper_bound
+}
+
 pub fn get_validators_outputs(transaction: Transaction) -> List<Output> {
   list.filter(
     transaction.outputs,
