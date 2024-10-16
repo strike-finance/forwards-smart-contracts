@@ -13,7 +13,7 @@ use utils.{
   get_address_hash_based_on_party, get_address_outputs,
   get_asset_amount_locked_based_on_party, get_asset_locked_based_on_party,
   get_datum_based_on_party, get_lower_bound, get_party_has_deposited_asset,
-  get_validators_inputs, validate_token_mint,
+  get_upper_bound, get_validators_inputs, validate_token_mint,
 }
 
 fn one_side_deposit_agreement(
@@ -44,7 +44,7 @@ fn one_side_deposit_agreement(
   let updated_datum_correct: Bool = output_datum_typed == expected_new_datum
 
   let deadline_not_passed: Bool =
-    datum.exercise_contract_date > get_lower_bound(transaction.validity_range)
+    datum.exercise_contract_date > get_upper_bound(transaction.validity_range)
   let collateral_send_back_valid: Bool =
     quantity_of(
       output_to_validator.value,
@@ -189,7 +189,7 @@ fn both_sides_deposit_agreement(
     ) >= datum.issuer_deposit_asset_amount
 
   let deadline_not_passed: Bool =
-    datum.exercise_contract_date > get_lower_bound(transaction.validity_range)
+    datum.exercise_contract_date > get_upper_bound(transaction.validity_range)
 
   expect Some(obligee_stake_credential) =
     expected_obligee_utxo.address.stake_credential
@@ -203,7 +203,7 @@ fn both_sides_deposit_agreement(
   stake_credential_is_valid && issuer_utxo_contains_asset && obligee_utxo_contains_asset && expected_issuer_utxo_contains_correct_asset && expected_obligee_contains_correct_asset && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && stake_credential_is_valid
 }
 
-fn consume_collateral_valid(
+fn liquidate_collateral_valid(
   datum: Option<CollateralDatum>,
   transaction: Transaction,
   party: Int,
@@ -227,8 +227,11 @@ fn consume_collateral_valid(
 
   let valid_mint: Bool = validate_token_mint(transaction.mint, expected_mint)
 
+  let all_validators_inputs = get_validators_inputs(transaction)
+  let only_one_validator_input = list.length(all_validators_inputs) == 1
+
   let default_case: Bool =
-    deadline_has_passed && party_has_deposited_asset && valid_mint && must_be_signed_by_owner
+    deadline_has_passed && party_has_deposited_asset && valid_mint && must_be_signed_by_owner && only_one_validator_input
 
   let strike_is_used_as_collateral: Bool =
     datum.each_party_strike_collateral_asset_amount > 0
@@ -349,7 +352,7 @@ validator collateral(
         )
 
       LiquidateCollateral(liquidate_party) ->
-        consume_collateral_valid(
+        liquidate_collateral_valid(
           datum,
           self,
           liquidate_party,

@@ -92,12 +92,16 @@ fn cancel_forwards_contract_valid(
   token_name: ByteArray,
 ) {
   expect Some(datum) = datum
+
+  let all_validators_inputs = get_validators_inputs(transaction)
+  let only_one_validator_input = list.length(all_validators_inputs) == 1
+
   let must_be_signed_by_issuer =
     list.has(transaction.extra_signatories, datum.issuer_address_hash)
 
   let expected_mint = (datum.mint_asset.policy_id, token_name, -1)
   let valid_mint = validate_token_mint(transaction.mint, expected_mint)
-  must_be_signed_by_issuer && valid_mint
+  must_be_signed_by_issuer && valid_mint && only_one_validator_input
 }
 
 fn create_forward_mint_valid(
