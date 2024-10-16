@@ -203,7 +203,7 @@ fn both_sides_deposit_agreement(
   stake_credential_is_valid && issuer_utxo_contains_asset && obligee_utxo_contains_asset && expected_issuer_utxo_contains_correct_asset && expected_obligee_contains_correct_asset && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && stake_credential_is_valid
 }
 
-fn consume_collateral_valid(
+fn liquidate_collateral_valid(
   datum: Option<CollateralDatum>,
   transaction: Transaction,
   party: Int,
@@ -227,8 +227,11 @@ fn consume_collateral_valid(
 
   let valid_mint: Bool = validate_token_mint(transaction.mint, expected_mint)
 
+  let all_validators_inputs = get_validators_inputs(transaction)
+  let only_one_validator_input = list.length(all_validators_inputs) == 1
+
   let default_case: Bool =
-    deadline_has_passed && party_has_deposited_asset && valid_mint && must_be_signed_by_owner
+    deadline_has_passed && party_has_deposited_asset && valid_mint && must_be_signed_by_owner && only_one_validator_input
 
   let strike_is_used_as_collateral: Bool =
     datum.each_party_strike_collateral_asset_amount > 0
@@ -349,7 +352,7 @@ validator collateral(
         )
 
       LiquidateCollateral(liquidate_party) ->
-        consume_collateral_valid(
+        liquidate_collateral_valid(
           datum,
           self,
           liquidate_party,

@@ -1,7 +1,7 @@
 use aiken/collection/list
 use cardano/transaction.{Transaction}
 use types.{AgreementDatum}
-use utils.{get_lower_bound, validate_token_mint}
+use utils.{get_lower_bound, get_validators_inputs, validate_token_mint}
 
 validator agreement {
   spend(
@@ -22,7 +22,11 @@ validator agreement {
       datum.exercise_contract_date < get_lower_bound(self.validity_range)
 
     let valid_mint: Bool = validate_token_mint(self.mint, expected_mint)
-    expiration_date_passed && valid_mint && must_be_signed_by_owner
+
+    let all_validators_inputs = get_validators_inputs(self)
+    let only_one_validator_input = list.length(all_validators_inputs) == 1
+
+    expiration_date_passed && valid_mint && must_be_signed_by_owner && only_one_validator_input
   }
 
   else(_) {
