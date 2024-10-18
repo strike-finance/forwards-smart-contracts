@@ -145,7 +145,7 @@
       },
       "parameters": [
         {
-          "title": "token_name",
+          "title": "asset_name",
           "schema": {
             "$ref": "#/definitions/ByteArray"
           }
@@ -176,7 +176,7 @@
       },
       "parameters": [
         {
-          "title": "token_name",
+          "title": "asset_name",
           "schema": {
             "$ref": "#/definitions/ByteArray"
           }
@@ -201,7 +201,7 @@
       "title": "forwards.forwards.else",
       "parameters": [
         {
-          "title": "token_name",
+          "title": "asset_name",
           "schema": {
             "$ref": "#/definitions/ByteArray"
           }

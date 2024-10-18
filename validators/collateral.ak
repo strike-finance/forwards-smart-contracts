@@ -1,9 +1,10 @@
 use aiken/collection/list
 use cardano/address.{StakeCredential, from_verification_key}
-use cardano/assets.{quantity_of}
+use cardano/assets.{Value, lovelace_of, match}
 use cardano/transaction.{
   InlineDatum, Output, OutputReference, Transaction, find_script_outputs,
 }
+use constants.{min_lovelace_amount}
 use types.{
   AddressHash, AgreementDatum, AssetClass, BothSidesDepositAgreement,
   CollateralDatum, CollateralRedeemerAction, LiquidateBothParties,
@@ -45,12 +46,6 @@ fn one_side_deposit_agreement(
 
   let deadline_not_passed: Bool =
     datum.exercise_contract_date > get_upper_bound(transaction.validity_range)
-  let collateral_send_back_valid: Bool =
-    quantity_of(
-      output_to_validator.value,
-      datum.collateral_asset.policy_id,
-      datum.collateral_asset.asset_name,
-    ) >= datum.each_party_collateral_asset_amount
 
   let expected_asset_locked: AssetClass =
     get_asset_locked_based_on_party(datum, deposit_party)
@@ -58,19 +53,19 @@ fn one_side_deposit_agreement(
   let expected_asset_amount_locked: Int =
     get_asset_amount_locked_based_on_party(datum, deposit_party)
 
-  let asset_locked_valid: Bool =
-    quantity_of(
-      output_to_validator.value,
-      expected_asset_locked.policy_id,
-      expected_asset_locked.asset_name,
-    ) >= expected_asset_amount_locked
-
-  let mint_asset_not_consumed =
-    quantity_of(
-      output_to_validator.value,
-      datum.mint_asset.policy_id,
-      datum.mint_asset.asset_name,
-    ) == 2
+  let expected_assets_locked: Value =
+    assets.from_lovelace(lovelace_of(input_from_validator.output.value))
+      |> assets.add(
+          output_datum_typed.collateral_asset.policy_id,
+          output_datum_typed.collateral_asset.asset_name,
+          output_datum_typed.each_party_collateral_asset_amount,
+        )
+      |> assets.add(datum.mint_asset.policy_id, datum.mint_asset.asset_name, 2)
+      |> assets.add(
+          expected_asset_locked.policy_id,
+          expected_asset_locked.asset_name,
+          expected_asset_amount_locked,
+        )
 
   expect Some(output_stake_credential) =
     output_to_validator.address.stake_credential
@@ -79,21 +74,29 @@ fn one_side_deposit_agreement(
     output_stake_credential == strike_stake_credential
 
   let default_case =
-    stake_credential_is_valid && mint_asset_not_consumed && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && collateral_send_back_valid && asset_locked_valid
+    stake_credential_is_valid && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed
 
   let strike_is_used_as_collateral: Bool =
     datum.each_party_strike_collateral_asset_amount > 0
 
   if strike_is_used_as_collateral {
-    let strike_collateral_asset_send_back_valid: Bool =
-      quantity_of(
-        output_to_validator.value,
-        datum.strike_collateral_asset.policy_id,
-        datum.strike_collateral_asset.asset_name,
-      ) >= datum.each_party_strike_collateral_asset_amount
-    default_case && strike_collateral_asset_send_back_valid
+    let expected_assets_locked_with_strike: Value =
+      expected_assets_locked
+        |> assets.add(
+            datum.strike_collateral_asset.policy_id,
+            datum.strike_collateral_asset.asset_name,
+            datum.each_party_strike_collateral_asset_amount,
+          )
+
+    let assets_match =
+      match(output_to_validator.value, expected_assets_locked_with_strike, ==)
+
+    default_case && assets_match
   } else {
-    default_case
+    let assets_match =
+      match(output_to_validator.value, expected_assets_locked, ==)
+
+    default_case && assets_match
   }
 }
 
@@ -105,12 +108,12 @@ fn both_sides_deposit_agreement(
 ) {
   expect Some(datum) = datum
 
-  // // make sure two outs to agreement validator, the datum is correct, make sure deadline not passed 
   let only_one_validator_input: Bool =
     list.length(get_validators_inputs(transaction)) == 1
+
   let outputs_to_consume_forwards_validator: List<Output> =
     find_script_outputs(transaction.outputs, agreement_validator)
-  let two_outputs_to_agreement_validator =
+  let two_outputs_to_agreement_validator: Bool =
     list.length(outputs_to_consume_forwards_validator) == 2
 
   let expected_issuer_datum =
@@ -136,6 +139,18 @@ fn both_sides_deposit_agreement(
       },
     )
 
+  let expected_issuer_assets_locked: Value =
+    assets.from_lovelace(min_lovelace_amount)
+      |> assets.add(datum.mint_asset.policy_id, datum.mint_asset.asset_name, 1)
+      |> assets.add(
+          datum.obligee_deposit_asset.policy_id,
+          datum.obligee_deposit_asset.asset_name,
+          datum.obligee_deposit_asset_amount,
+        )
+
+  let expected_issuer_assets_locked_match: Bool =
+    match(expected_issuer_utxo.value, expected_issuer_assets_locked, ==)
+
   let expected_obligee_datum =
     AgreementDatum {
       issuer_address_hash: datum.issuer_address_hash,
@@ -160,33 +175,17 @@ fn both_sides_deposit_agreement(
       },
     )
 
-  let obligee_utxo_contains_asset: Bool =
-    quantity_of(
-      expected_obligee_utxo.value,
-      datum.mint_asset.policy_id,
-      datum.mint_asset.asset_name,
-    ) == 1
+  let expected_obligee_assets_locked: Value =
+    assets.from_lovelace(min_lovelace_amount)
+      |> assets.add(datum.mint_asset.policy_id, datum.mint_asset.asset_name, 1)
+      |> assets.add(
+          datum.issuer_deposit_asset.policy_id,
+          datum.issuer_deposit_asset.asset_name,
+          datum.issuer_deposit_asset_amount,
+        )
 
-  let issuer_utxo_contains_asset: Bool =
-    quantity_of(
-      expected_issuer_utxo.value,
-      datum.mint_asset.policy_id,
-      datum.mint_asset.asset_name,
-    ) == 1
-
-  let expected_issuer_utxo_contains_correct_asset: Bool =
-    quantity_of(
-      expected_issuer_utxo.value,
-      datum.obligee_deposit_asset.policy_id,
-      datum.obligee_deposit_asset.asset_name,
-    ) >= datum.obligee_deposit_asset_amount
-
-  let expected_obligee_contains_correct_asset: Bool =
-    quantity_of(
-      expected_obligee_utxo.value,
-      datum.issuer_deposit_asset.policy_id,
-      datum.issuer_deposit_asset.asset_name,
-    ) >= datum.issuer_deposit_asset_amount
+  let expected_obligee_assets_locked_match: Bool =
+    match(expected_obligee_utxo.value, expected_obligee_assets_locked, ==)
 
   let deadline_not_passed: Bool =
     datum.exercise_contract_date > get_upper_bound(transaction.validity_range)
@@ -197,10 +196,10 @@ fn both_sides_deposit_agreement(
   expect Some(issuer_stake_credential) =
     expected_issuer_utxo.address.stake_credential
 
-  let stake_credential_is_valid =
+  let stake_credential_is_valid: Bool =
     obligee_stake_credential == strike_stake_credential && issuer_stake_credential == strike_stake_credential
 
-  stake_credential_is_valid && issuer_utxo_contains_asset && obligee_utxo_contains_asset && expected_issuer_utxo_contains_correct_asset && expected_obligee_contains_correct_asset && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && stake_credential_is_valid
+  stake_credential_is_valid && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && stake_credential_is_valid && expected_obligee_assets_locked_match && expected_issuer_assets_locked_match
 }
 
 fn liquidate_collateral_valid(
@@ -243,12 +242,20 @@ fn liquidate_collateral_valid(
     expect Some(output_to_collateral_validator) =
       list.head(outputs_to_liquidate_validator)
 
+    let expected_strike_collateral_asset_locked: Value =
+      assets.from_lovelace(lovelace_of(output_to_collateral_validator.value))
+        |> assets.add(
+            datum.strike_collateral_asset.policy_id,
+            datum.strike_collateral_asset.asset_name,
+            datum.each_party_strike_collateral_asset_amount,
+          )
+
     let strike_collateral_asset_burnt: Bool =
-      quantity_of(
+      match(
         output_to_collateral_validator.value,
-        datum.strike_collateral_asset.policy_id,
-        datum.strike_collateral_asset.asset_name,
-      ) >= datum.each_party_strike_collateral_asset_amount
+        expected_strike_collateral_asset_locked,
+        ==,
+      )
 
     default_case && strike_collateral_asset_burnt
   } else {
@@ -278,12 +285,22 @@ pub fn liquidate_both_parties_valid(
   expect Some(output_send_to_strike_consume_address) =
     list.head(outputs_send_to_strike_consume_address)
 
-  let both_collateral_assets_sent: Bool =
-    quantity_of(
+  let expected_assets_to_strike: Value =
+    assets.from_lovelace(
+      lovelace_of(output_send_to_strike_consume_address.value),
+    )
+      |> assets.add(
+          datum.collateral_asset.policy_id,
+          datum.collateral_asset.asset_name,
+          datum.each_party_collateral_asset_amount * 2,
+        )
+
+  let collateral_assets_sent: Bool =
+    match(
       output_send_to_strike_consume_address.value,
-      datum.collateral_asset.policy_id,
-      datum.collateral_asset.asset_name,
-    ) >= datum.each_party_collateral_asset_amount * 2
+      expected_assets_to_strike,
+      ==,
+    )
 
   let outputs_to_liquidate_validator: List<Output> =
     find_script_outputs(transaction.outputs, liquidate_validator)
@@ -303,17 +320,26 @@ pub fn liquidate_both_parties_valid(
     list.length(get_validators_inputs(transaction)) == 1
 
   let default_case: Bool =
-    deadline_has_passed && both_collateral_assets_sent && both_party_has_not_deposited_asset && valid_mint && only_one_validator_input
+    deadline_has_passed && collateral_assets_sent && both_party_has_not_deposited_asset && valid_mint && only_one_validator_input
 
   if datum.each_party_strike_collateral_asset_amount > 0 {
     expect Some(output_to_liquidate_validator) =
       list.head(outputs_to_liquidate_validator)
+
+    let expected_strike_collateral_asset_locked: Value =
+      assets.from_lovelace(lovelace_of(output_to_liquidate_validator.value))
+        |> assets.add(
+            datum.strike_collateral_asset.policy_id,
+            datum.strike_collateral_asset.asset_name,
+            datum.each_party_strike_collateral_asset_amount,
+          )
+
     let strike_collateral_asset_burnt: Bool =
-      quantity_of(
+      match(
         output_to_liquidate_validator.value,
-        datum.strike_collateral_asset.policy_id,
-        datum.strike_collateral_asset.asset_name,
-      ) >= datum.each_party_strike_collateral_asset_amount * 2
+        expected_strike_collateral_asset_locked,
+        ==,
+      )
 
     strike_collateral_asset_burnt && default_case
   } else {
