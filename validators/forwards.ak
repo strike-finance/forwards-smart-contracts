@@ -202,11 +202,19 @@ fn enter_forward_mint_valid(
   policy_id: PolicyId,
   asset_name: ByteArray,
 ) -> Bool {
-  let expected_mint = (policy_id, asset_name, 1)
+  let all_inputs_from_script = get_validators_inputs(transaction)
 
+  let only_one_validator_input: Bool = list.length(all_inputs_from_script) == 1
+
+  expect Some(input) = list.head(all_inputs_from_script)
+
+  let input_is_from_forward_validator: Bool =
+    get_script_hash(input.output.address) == policy_id
+
+  let expected_mint = (policy_id, asset_name, 1)
   let valid_mint = validate_token_mint(transaction.mint, expected_mint)
 
-  valid_mint
+  valid_mint && only_one_validator_input && input_is_from_forward_validator
 }
 
 fn single_burn_valid(
