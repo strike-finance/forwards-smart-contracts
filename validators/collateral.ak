@@ -89,12 +89,12 @@ fn one_side_deposit_agreement(
           )
 
     let assets_match =
-      match(output_to_validator.value, expected_assets_locked_with_strike, ==)
+      match(output_to_validator.value, expected_assets_locked_with_strike, >=)
 
     default_case && assets_match
   } else {
     let assets_match =
-      match(output_to_validator.value, expected_assets_locked, ==)
+      match(output_to_validator.value, expected_assets_locked, >=)
 
     default_case && assets_match
   }
@@ -149,7 +149,7 @@ fn both_sides_deposit_agreement(
         )
 
   let expected_issuer_assets_locked_match: Bool =
-    match(expected_issuer_utxo.value, expected_issuer_assets_locked, ==)
+    match(expected_issuer_utxo.value, expected_issuer_assets_locked, >=)
 
   let expected_obligee_datum =
     AgreementDatum {
@@ -185,7 +185,7 @@ fn both_sides_deposit_agreement(
         )
 
   let expected_obligee_assets_locked_match: Bool =
-    match(expected_obligee_utxo.value, expected_obligee_assets_locked, ==)
+    match(expected_obligee_utxo.value, expected_obligee_assets_locked, >=)
 
   let deadline_not_passed: Bool =
     datum.exercise_contract_date > get_upper_bound(transaction.validity_range)
@@ -254,7 +254,7 @@ fn liquidate_collateral_valid(
       match(
         output_to_collateral_validator.value,
         expected_strike_collateral_asset_locked,
-        ==,
+        >=,
       )
 
     default_case && strike_collateral_asset_burnt
@@ -299,7 +299,7 @@ pub fn liquidate_both_parties_valid(
     match(
       output_send_to_strike_consume_address.value,
       expected_assets_to_strike,
-      ==,
+      >=,
     )
 
   let outputs_to_liquidate_validator: List<Output> =
@@ -338,7 +338,7 @@ pub fn liquidate_both_parties_valid(
       match(
         output_to_liquidate_validator.value,
         expected_strike_collateral_asset_locked,
-        ==,
+        >=,
       )
 
     strike_collateral_asset_burnt && default_case

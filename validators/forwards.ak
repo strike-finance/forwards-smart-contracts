@@ -89,13 +89,13 @@ fn accept_forwards_contract_valid(
       match(
         output_to_collateral_utxo.value,
         expected_asset_locked_with_strike,
-        ==,
+        >=,
       )
 
     default_case && assets_match
   } else {
     let assets_match: Bool =
-      match(output_to_collateral_utxo.value, expected_assets_locked, ==)
+      match(output_to_collateral_utxo.value, expected_assets_locked, >=)
 
     default_case && assets_match
   }
@@ -185,13 +185,13 @@ fn create_forward_mint_valid(
       match(
         output_to_forward_contract.value,
         expected_assets_locked_with_strike,
-        ==,
+        >=,
       )
 
     default_case && assets_match
   } else {
     let assets_match =
-      match(output_to_forward_contract.value, expected_assets_locked, ==)
+      match(output_to_forward_contract.value, expected_assets_locked, >=)
 
     default_case && assets_match
   }
