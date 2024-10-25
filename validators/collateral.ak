@@ -331,7 +331,7 @@ pub fn liquidate_both_parties_valid(
         |> assets.add(
             datum.strike_collateral_asset.policy_id,
             datum.strike_collateral_asset.asset_name,
-            datum.each_party_strike_collateral_asset_amount,
+            datum.each_party_strike_collateral_asset_amount * 2,
           )
 
     let strike_collateral_asset_burnt: Bool =
