@@ -8,7 +8,9 @@ use types.{
   CreateForwardMint, EnterForwardMint, ForwardsDatum, ForwardsRedeemer,
   LiquidateBurn, MintRedeemer, ObligeeInfo, ScriptHash, SingleBurn,
 }
-use utils.{get_script_hash, get_validators_inputs, validate_token_mint}
+use utils.{
+  get_script_hash, get_upper_bound, get_validators_inputs, validate_token_mint,
+}
 
 fn accept_forwards_contract_valid(
   datum: Option<ForwardsDatum>,
@@ -64,14 +66,24 @@ fn accept_forwards_contract_valid(
         )
       |> assets.add(datum.mint_asset.policy_id, datum.mint_asset.asset_name, 2)
 
+  let expected_mint =
+    (datum.mint_asset.policy_id, datum.mint_asset.asset_name, 1)
+
+  let valid_mint = validate_token_mint(transaction.mint, expected_mint)
+
   expect Some(output_to_collateral_stake_credential) =
     output_to_collateral_utxo.address.stake_credential
 
   let stake_credential_is_valid: Bool =
     output_to_collateral_stake_credential == strike_stake_credential
 
+  let deadline_not_passed =
+    expected_collateral_datum.exercise_contract_date > get_upper_bound(
+      transaction.validity_range,
+    )
+
   let default_case: Bool =
-    only_one_validator_input && only_one_output_to_collateral_validator && stake_credential_is_valid
+    only_one_validator_input && only_one_output_to_collateral_validator && stake_credential_is_valid && valid_mint && deadline_not_passed
 
   let strike_is_used_as_collateral: Bool =
     expected_collateral_datum.each_party_strike_collateral_asset_amount > 0
