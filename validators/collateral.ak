@@ -14,7 +14,7 @@ use utils.{
   get_address_hash_based_on_party, get_address_outputs,
   get_asset_amount_locked_based_on_party, get_asset_locked_based_on_party,
   get_datum_based_on_party, get_lower_bound, get_party_has_deposited_asset,
-  get_upper_bound, get_validators_inputs, validate_token_mint,
+  get_upper_bound, get_validators_inputs, ref_script_empty, validate_token_mint,
 }
 
 fn one_side_deposit_agreement(
@@ -73,8 +73,10 @@ fn one_side_deposit_agreement(
   let stake_credential_is_valid =
     output_stake_credential == strike_stake_credential
 
-  let default_case =
-    stake_credential_is_valid && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed
+  let ref_script_empty = ref_script_empty(output_to_validator)
+
+  expect
+    stake_credential_is_valid && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && ref_script_empty
 
   let strike_is_used_as_collateral: Bool =
     datum.each_party_strike_collateral_asset_amount > 0
@@ -91,12 +93,12 @@ fn one_side_deposit_agreement(
     let assets_match =
       match(output_to_validator.value, expected_assets_locked_with_strike, >=)
 
-    default_case && assets_match
+    assets_match
   } else {
     let assets_match =
       match(output_to_validator.value, expected_assets_locked, >=)
 
-    default_case && assets_match
+    assets_match
   }
 }
 
@@ -199,7 +201,11 @@ fn both_sides_deposit_agreement(
   let stake_credential_is_valid: Bool =
     obligee_stake_credential == strike_stake_credential && issuer_stake_credential == strike_stake_credential
 
-  stake_credential_is_valid && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && stake_credential_is_valid && expected_obligee_assets_locked_match && expected_issuer_assets_locked_match
+  let obligee_ref_script_empty = ref_script_empty(expected_obligee_utxo)
+
+  let issuer_ref_script_empty = ref_script_empty(expected_issuer_utxo)
+
+  stake_credential_is_valid && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && obligee_ref_script_empty && issuer_ref_script_empty && expected_obligee_assets_locked_match && expected_issuer_assets_locked_match
 }
 
 fn liquidate_collateral_valid(
@@ -229,7 +235,7 @@ fn liquidate_collateral_valid(
   let all_validators_inputs = get_validators_inputs(transaction)
   let only_one_validator_input = list.length(all_validators_inputs) == 1
 
-  let default_case: Bool =
+  expect
     deadline_has_passed && party_has_deposited_asset && valid_mint && must_be_signed_by_owner && only_one_validator_input
 
   let strike_is_used_as_collateral: Bool =
@@ -257,9 +263,9 @@ fn liquidate_collateral_valid(
         >=,
       )
 
-    default_case && strike_collateral_asset_burnt
+    strike_collateral_asset_burnt
   } else {
-    default_case
+    True
   }
 }
 
@@ -319,7 +325,7 @@ pub fn liquidate_both_parties_valid(
   let only_one_validator_input: Bool =
     list.length(get_validators_inputs(transaction)) == 1
 
-  let default_case: Bool =
+  expect
     deadline_has_passed && collateral_assets_sent && both_party_has_not_deposited_asset && valid_mint && only_one_validator_input
 
   if datum.each_party_strike_collateral_asset_amount > 0 {
@@ -341,9 +347,9 @@ pub fn liquidate_both_parties_valid(
         >=,
       )
 
-    strike_collateral_asset_burnt && default_case
+    strike_collateral_asset_burnt
   } else {
-    default_case
+    True
   }
 }
 

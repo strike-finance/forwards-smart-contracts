@@ -213,3 +213,7 @@ fn only_one_token_in_policy_minted(mints, expected_minting) {
   list.length(dict.keys(tokens(mints, policy_id))) == 1
   // Total count of minted unique tokens with policy is 1
 }
+
+pub fn ref_script_empty(output: Output) -> Bool {
+  output.reference_script == None
+}
