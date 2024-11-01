@@ -1,3 +1,4 @@
+use aiken/builtin
 use aiken/collection/list
 use cardano/address.{StakeCredential, from_verification_key}
 use cardano/assets.{AssetName, PolicyId, Value, lovelace_of, match}
@@ -123,6 +124,10 @@ fn both_sides_deposit_agreement(
   let two_outputs_to_agreement_validator: Bool =
     list.length(outputs_to_consume_forwards_validator) == 2
 
+  expect [expected_issuer_utxo,
+    expected_obligee_utxo] =
+    find_script_outputs(transaction.outputs, agreement_validator)
+
   let expected_issuer_datum =
     AgreementDatum {
       issuer_address_hash: datum.issuer_address_hash,
@@ -136,15 +141,13 @@ fn both_sides_deposit_agreement(
       exercise_contract_date: datum.exercise_contract_date,
       mint_asset: datum.mint_asset,
     }
-  expect Some(expected_issuer_utxo) =
-    list.find(
-      outputs_to_consume_forwards_validator,
-      fn(output) {
-        expect InlineDatum(output_datum) = output.datum
-        expect output_datum_typed: AgreementDatum = output_datum
-        output_datum_typed == expected_issuer_datum
-      },
-    )
+
+  let expected_issuer_datum_as_data: Data =
+    builtin.serialise_data(expected_issuer_datum)
+
+  expect InlineDatum(issuer_datum) = expected_issuer_utxo.datum
+
+  let issuer_datum_match: Bool = expected_issuer_datum_as_data == issuer_datum
 
   let expected_issuer_assets_locked: Value =
     assets.from_lovelace(min_lovelace_amount)
@@ -172,15 +175,13 @@ fn both_sides_deposit_agreement(
       mint_asset: datum.mint_asset,
     }
 
-  expect Some(expected_obligee_utxo) =
-    list.find(
-      outputs_to_consume_forwards_validator,
-      fn(output) {
-        expect InlineDatum(output_datum) = output.datum
-        expect output_datum_typed: AgreementDatum = output_datum
-        output_datum_typed == expected_obligee_datum
-      },
-    )
+  expect InlineDatum(obligee_datum) = expected_obligee_utxo.datum
+
+  let expected_obligee_datum_as_data: Data =
+    builtin.serialise_data(expected_obligee_datum)
+
+  let obligee_datum_match: Bool =
+    expected_obligee_datum_as_data == obligee_datum
 
   let expected_obligee_assets_locked: Value =
     assets.from_lovelace(min_lovelace_amount)
@@ -210,7 +211,7 @@ fn both_sides_deposit_agreement(
 
   let issuer_ref_script_empty = ref_script_empty(expected_issuer_utxo)
 
-  stake_credential_is_valid && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && obligee_ref_script_empty && issuer_ref_script_empty && expected_obligee_assets_locked_match && expected_issuer_assets_locked_match
+  stake_credential_is_valid && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && obligee_ref_script_empty && issuer_ref_script_empty && expected_obligee_assets_locked_match && expected_issuer_assets_locked_match && issuer_datum_match && obligee_datum_match
 }
 
 fn liquidate_collateral_valid(
