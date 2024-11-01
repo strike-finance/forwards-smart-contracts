@@ -9,7 +9,8 @@ use types.{
   LiquidateBurn, MintRedeemer, ObligeeInfo, ScriptHash, SingleBurn,
 }
 use utils.{
-  get_script_hash, get_upper_bound, get_validators_inputs, validate_token_mint,
+  get_script_hash, get_upper_bound, get_validators_inputs, ref_script_empty,
+  validate_token_mint,
 }
 
 fn accept_forwards_contract_valid(
@@ -82,8 +83,10 @@ fn accept_forwards_contract_valid(
       transaction.validity_range,
     )
 
-  let default_case: Bool =
-    only_one_validator_input && only_one_output_to_collateral_validator && stake_credential_is_valid && valid_mint && deadline_not_passed
+  let ref_script_empty = ref_script_empty(output_to_collateral_utxo)
+
+  expect
+    only_one_validator_input && only_one_output_to_collateral_validator && stake_credential_is_valid && valid_mint && deadline_not_passed && ref_script_empty
 
   let strike_is_used_as_collateral: Bool =
     expected_collateral_datum.each_party_strike_collateral_asset_amount > 0
@@ -104,12 +107,12 @@ fn accept_forwards_contract_valid(
         >=,
       )
 
-    default_case && assets_match
+    assets_match
   } else {
     let assets_match: Bool =
       match(output_to_collateral_utxo.value, expected_assets_locked, >=)
 
-    default_case && assets_match
+    assets_match
   }
 }
 
@@ -178,8 +181,10 @@ fn create_forward_mint_valid(
         )
       |> assets.add(policy_id, asset_name, 1)
 
-  let default_case: Bool =
-    valid_mint && output_is_to_forward_validator && stake_credential_is_valid
+  let ref_script_empty = ref_script_empty(output_to_forward_contract)
+
+  expect
+    valid_mint && output_is_to_forward_validator && stake_credential_is_valid && ref_script_empty
 
   let strike_is_used_as_collateral: Bool =
     output_datum_typed.each_party_strike_collateral_asset_amount > 0
@@ -200,12 +205,12 @@ fn create_forward_mint_valid(
         >=,
       )
 
-    default_case && assets_match
+    assets_match
   } else {
     let assets_match =
       match(output_to_forward_contract.value, expected_assets_locked, >=)
 
-    default_case && assets_match
+    assets_match
   }
 }
 
