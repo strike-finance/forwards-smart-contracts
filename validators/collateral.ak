@@ -75,8 +75,11 @@ fn one_side_deposit_agreement(
 
   let ref_script_empty = ref_script_empty(output_to_validator)
 
+  let no_side_has_deposited_asset: Bool =
+    !datum.issuer_has_deposited_asset && !datum.obligee_has_deposited_asset
+
   expect
-    stake_credential_is_valid && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && ref_script_empty
+    stake_credential_is_valid && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && ref_script_empty && no_side_has_deposited_asset
 
   let strike_is_used_as_collateral: Bool =
     datum.each_party_strike_collateral_asset_amount > 0
