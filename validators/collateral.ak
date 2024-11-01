@@ -1,6 +1,6 @@
 use aiken/collection/list
 use cardano/address.{StakeCredential, from_verification_key}
-use cardano/assets.{Value, lovelace_of, match}
+use cardano/assets.{AssetName, PolicyId, Value, lovelace_of, match}
 use cardano/transaction.{
   InlineDatum, Output, OutputReference, Transaction, find_script_outputs,
 }
@@ -22,6 +22,8 @@ fn one_side_deposit_agreement(
   transaction: Transaction,
   deposit_party: Int,
   my_output_reference: OutputReference,
+  strike_policy_id: PolicyId,
+  strike_asset_name: AssetName,
   strike_stake_credential: StakeCredential,
 ) {
   expect Some(datum) = datum
@@ -88,8 +90,8 @@ fn one_side_deposit_agreement(
     let expected_assets_locked_with_strike: Value =
       expected_assets_locked
         |> assets.add(
-            datum.strike_collateral_asset.policy_id,
-            datum.strike_collateral_asset.asset_name,
+            strike_policy_id,
+            strike_asset_name,
             datum.each_party_strike_collateral_asset_amount,
           )
 
@@ -216,6 +218,8 @@ fn liquidate_collateral_valid(
   transaction: Transaction,
   party: Int,
   liquidate_validator: ScriptHash,
+  strike_policy_id: PolicyId,
+  strike_asset_name: AssetName,
 ) {
   expect Some(datum) = datum
   let party_address_hash: AddressHash =
@@ -254,8 +258,8 @@ fn liquidate_collateral_valid(
     let expected_strike_collateral_asset_locked: Value =
       assets.from_lovelace(lovelace_of(output_to_collateral_validator.value))
         |> assets.add(
-            datum.strike_collateral_asset.policy_id,
-            datum.strike_collateral_asset.asset_name,
+            strike_policy_id,
+            strike_asset_name,
             datum.each_party_strike_collateral_asset_amount,
           )
 
@@ -276,6 +280,8 @@ pub fn liquidate_both_parties_valid(
   datum: Option<CollateralDatum>,
   transaction: Transaction,
   liquidate_validator: ScriptHash,
+  strike_policy_id: PolicyId,
+  strike_asset_name: AssetName,
   strike_consume_address_hash: AddressHash,
 ) {
   expect Some(datum) = datum
@@ -338,8 +344,8 @@ pub fn liquidate_both_parties_valid(
     let expected_strike_collateral_asset_locked: Value =
       assets.from_lovelace(lovelace_of(output_to_liquidate_validator.value))
         |> assets.add(
-            datum.strike_collateral_asset.policy_id,
-            datum.strike_collateral_asset.asset_name,
+            strike_policy_id,
+            strike_asset_name,
             datum.each_party_strike_collateral_asset_amount * 2,
           )
 
@@ -359,6 +365,8 @@ pub fn liquidate_both_parties_valid(
 validator collateral(
   agreement_validator: ScriptHash,
   liquidate_validator: ScriptHash,
+  strike_policy_id: PolicyId,
+  strike_asset_name: ByteArray,
   strike_consume_address_hash: AddressHash,
   strike_stake_credential: StakeCredential,
 ) {
@@ -375,6 +383,8 @@ validator collateral(
           self,
           deposit_party,
           my_output_reference,
+          strike_policy_id,
+          strike_asset_name,
           strike_stake_credential,
         )
 
@@ -392,6 +402,8 @@ validator collateral(
           self,
           liquidate_party,
           liquidate_validator,
+          strike_policy_id,
+          strike_asset_name,
         )
 
       LiquidateBothParties ->
@@ -399,6 +411,8 @@ validator collateral(
           datum,
           self,
           liquidate_validator,
+          strike_policy_id,
+          strike_asset_name,
           strike_consume_address_hash,
         )
     }
