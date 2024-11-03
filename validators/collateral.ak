@@ -1,4 +1,3 @@
-use aiken/builtin
 use aiken/collection/list
 use cardano/address.{StakeCredential, from_verification_key}
 use cardano/assets.{AssetName, PolicyId, Value, lovelace_of, match}
@@ -142,8 +141,7 @@ fn both_sides_deposit_agreement(
       mint_asset: datum.mint_asset,
     }
 
-  let expected_issuer_datum_as_data: Data =
-    builtin.serialise_data(expected_issuer_datum)
+  let expected_issuer_datum_as_data: Data = expected_issuer_datum
 
   expect InlineDatum(issuer_datum) = expected_issuer_utxo.datum
 
@@ -177,8 +175,7 @@ fn both_sides_deposit_agreement(
 
   expect InlineDatum(obligee_datum) = expected_obligee_utxo.datum
 
-  let expected_obligee_datum_as_data: Data =
-    builtin.serialise_data(expected_obligee_datum)
+  let expected_obligee_datum_as_data: Data = expected_obligee_datum
 
   let obligee_datum_match: Bool =
     expected_obligee_datum_as_data == obligee_datum
