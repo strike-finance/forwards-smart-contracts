@@ -1,7 +1,7 @@
 use aiken/collection/list
-use cardano/address.{StakeCredential}
-use cardano/assets.{PolicyId, Value, match, quantity_of}
-use cardano/transaction.{InlineDatum, Output, Transaction, find_script_outputs}
+use cardano/address.{Script, StakeCredential}
+use cardano/assets.{PolicyId, Value, match}
+use cardano/transaction.{InlineDatum, Output, Transaction}
 use constants.{min_lovelace_amount}
 use types.{
   AcceptForwardsContract, CancelForwardsContract, CollateralDatum,
@@ -21,16 +21,21 @@ fn accept_forwards_contract_valid(
   strike_policy_id: PolicyId,
   strike_asset_name: ByteArray,
   strike_stake_credential: StakeCredential,
+  output_index: Int,
 ) {
   expect Some(datum) = datum
 
   let all_inputs_from_script = get_validators_inputs(transaction)
   let only_one_validator_input: Bool = list.length(all_inputs_from_script) == 1
 
-  let outputs_to_collateral_validator: List<Output> =
-    find_script_outputs(transaction.outputs, collateral_validator)
-  let only_one_output_to_collateral_validator =
-    list.length(outputs_to_collateral_validator) == 1
+  expect Some(output_to_collateral_utxo) =
+    list.at(transaction.outputs, output_index)
+
+  expect Script(output_to_collateral_hash) =
+    output_to_collateral_utxo.address.payment_credential
+
+  let output_is_to_collateral_validator: Bool =
+    output_to_collateral_hash == collateral_validator
 
   let expected_collateral_datum =
     CollateralDatum {
@@ -51,14 +56,9 @@ fn accept_forwards_contract_valid(
 
   let datum_as_data: Data = expected_collateral_datum
 
-  expect Some(output_to_collateral_utxo) =
-    list.find(
-      outputs_to_collateral_validator,
-      fn(output) {
-        expect InlineDatum(output_datum) = output.datum
-        datum_as_data == output_datum
-      },
-    )
+  expect InlineDatum(output_datum) = output_to_collateral_utxo.datum
+
+  let expected_collateral_datum_match: Bool = output_datum == datum_as_data
 
   let expected_assets_locked: Value =
     assets.from_lovelace(min_lovelace_amount)
@@ -88,7 +88,7 @@ fn accept_forwards_contract_valid(
   let ref_script_empty = ref_script_empty(output_to_collateral_utxo)
 
   expect
-    only_one_validator_input && only_one_output_to_collateral_validator && stake_credential_is_valid && valid_mint && deadline_not_passed && ref_script_empty
+    only_one_validator_input && stake_credential_is_valid && valid_mint && deadline_not_passed && ref_script_empty && expected_collateral_datum_match && output_is_to_collateral_validator
 
   let strike_is_used_as_collateral: Bool =
     expected_collateral_datum.each_party_strike_collateral_asset_amount > 0
@@ -144,23 +144,14 @@ fn create_forward_mint_valid(
   strike_policy_id: PolicyId,
   strike_asset_name: ByteArray,
   strike_stake_credential: StakeCredential,
+  output_index: Int,
 ) -> Bool {
   let expected_mint = (policy_id, asset_name, 1)
 
   let valid_mint: Bool = validate_token_mint(transaction.mint, expected_mint)
 
-  let outputs: List<Output> = transaction.outputs
-
   expect Some(output_to_forward_contract) =
-    list.find(
-      outputs,
-      fn(output) {
-        let minted_asset_quantity =
-          quantity_of(output.value, policy_id, asset_name)
-
-        minted_asset_quantity == 1
-      },
-    )
+    list.at(transaction.outputs, output_index)
 
   expect InlineDatum(output_datum) = output_to_forward_contract.datum
   expect output_datum_typed: ForwardsDatum = output_datum
@@ -293,7 +284,7 @@ validator forwards(
     transaction: Transaction,
   ) {
     when redeemer is {
-      AcceptForwardsContract(obligee_info) ->
+      AcceptForwardsContract(obligee_info, output_index) ->
         accept_forwards_contract_valid(
           datum,
           transaction,
@@ -302,6 +293,7 @@ validator forwards(
           strike_policy_id,
           strike_asset_name,
           strike_stake_credential,
+          output_index,
         )
 
       CancelForwardsContract ->
@@ -311,7 +303,7 @@ validator forwards(
 
   mint(rdmr: MintRedeemer, policy_id: PolicyId, transaction: Transaction) {
     when rdmr is {
-      CreateForwardMint ->
+      CreateForwardMint(output_index) ->
         create_forward_mint_valid(
           transaction,
           policy_id,
@@ -319,6 +311,7 @@ validator forwards(
           strike_policy_id,
           strike_asset_name,
           strike_stake_credential,
+          output_index,
         )
       EnterForwardMint ->
         enter_forward_mint_valid(transaction, policy_id, asset_name)

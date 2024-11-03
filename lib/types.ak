@@ -63,19 +63,19 @@ pub type ObligeeInfo {
 
 // 0 = issuer, 1 = obligee
 pub type CollateralRedeemerAction {
-  OneSideDepositAgreement(Int)
+  OneSideDepositAgreement(Int, Int)
   BothSidesDepositAgreement(Int)
-  LiquidateCollateral(Int)
-  LiquidateBothParties
+  LiquidateCollateral(Int, Int)
+  LiquidateBothParties(Int, Int)
 }
 
 pub type ForwardsRedeemer {
-  AcceptForwardsContract(ObligeeInfo)
+  AcceptForwardsContract(ObligeeInfo, Int)
   CancelForwardsContract
 }
 
 pub type MintRedeemer {
-  CreateForwardMint
+  CreateForwardMint(Int)
   EnterForwardMint
   SingleBurn
   LiquidateBurn
