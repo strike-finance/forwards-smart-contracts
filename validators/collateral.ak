@@ -111,10 +111,17 @@ fn one_side_deposit_agreement(
 fn both_sides_deposit_agreement(
   datum: Option<CollateralDatum>,
   transaction: Transaction,
+  deposit_party: Int,
   agreement_validator: ScriptHash,
   strike_stake_credential: StakeCredential,
 ) {
   expect Some(datum) = datum
+
+  if deposit_party == 0 {
+    expect datum.obligee_has_deposited_asset
+  } else {
+    expect datum.issuer_has_deposited_asset
+  }
 
   let only_one_validator_input: Bool =
     list.length(get_validators_inputs(transaction)) == 1
@@ -389,10 +396,11 @@ validator collateral(
           strike_stake_credential,
         )
 
-      BothSidesDepositAgreement ->
+      BothSidesDepositAgreement(deposit_party) ->
         both_sides_deposit_agreement(
           datum,
           self,
+          deposit_party,
           agreement_validator,
           strike_stake_credential,
         )

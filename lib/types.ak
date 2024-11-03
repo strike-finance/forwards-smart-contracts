@@ -64,7 +64,7 @@ pub type ObligeeInfo {
 // 0 = issuer, 1 = obligee
 pub type CollateralRedeemerAction {
   OneSideDepositAgreement(Int)
-  BothSidesDepositAgreement
+  BothSidesDepositAgreement(Int)
   LiquidateCollateral(Int)
   LiquidateBothParties
 }
