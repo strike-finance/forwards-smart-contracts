@@ -14,7 +14,8 @@ use utils.{
   get_address_hash_based_on_party, get_address_outputs,
   get_asset_amount_locked_based_on_party, get_asset_locked_based_on_party,
   get_datum_based_on_party, get_lower_bound, get_party_has_deposited_asset,
-  get_upper_bound, get_validators_inputs, ref_script_empty, validate_token_mint,
+  get_upper_bound, get_validators_inputs, ref_script_empty, signed_by_party,
+  validate_token_mint,
 }
 
 fn one_side_deposit_agreement(
@@ -80,8 +81,11 @@ fn one_side_deposit_agreement(
   let no_side_has_deposited_asset: Bool =
     !datum.issuer_has_deposited_asset && !datum.obligee_has_deposited_asset
 
+  let signed_transaction: Bool =
+    signed_by_party(transaction, deposit_party, datum)
+
   expect
-    stake_credential_is_valid && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && ref_script_empty && no_side_has_deposited_asset
+    stake_credential_is_valid && only_one_validator_input && only_one_validator_output && updated_datum_correct && deadline_not_passed && ref_script_empty && no_side_has_deposited_asset && signed_transaction
 
   let strike_is_used_as_collateral: Bool =
     datum.each_party_strike_collateral_asset_amount > 0
@@ -215,7 +219,10 @@ fn both_sides_deposit_agreement(
 
   let issuer_ref_script_empty = ref_script_empty(expected_issuer_utxo)
 
-  stake_credential_is_valid && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && obligee_ref_script_empty && issuer_ref_script_empty && expected_obligee_assets_locked_match && expected_issuer_assets_locked_match && issuer_datum_match && obligee_datum_match
+  let signed_transaction: Bool =
+    signed_by_party(transaction, deposit_party, datum)
+
+  stake_credential_is_valid && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && obligee_ref_script_empty && issuer_ref_script_empty && expected_obligee_assets_locked_match && expected_issuer_assets_locked_match && issuer_datum_match && obligee_datum_match && signed_transaction
 }
 
 fn liquidate_collateral_valid(

@@ -215,3 +215,15 @@ fn only_one_token_in_policy_minted(mints, expected_minting) {
 pub fn ref_script_empty(output: Output) -> Bool {
   output.reference_script == None
 }
+
+pub fn signed_by_party(
+  transaction: Transaction,
+  party: Int,
+  datum: CollateralDatum,
+) -> Bool {
+  if party == 0 {
+    list.has(transaction.extra_signatories, datum.issuer_address_hash)
+  } else {
+    list.has(transaction.extra_signatories, datum.obligee_address_hash)
+  }
+}
