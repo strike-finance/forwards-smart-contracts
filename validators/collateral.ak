@@ -1,6 +1,7 @@
+use aiken/builtin
 use aiken/collection/list
 use cardano/address.{StakeCredential, from_verification_key}
-use cardano/assets.{Value, lovelace_of, match}
+use cardano/assets.{AssetName, PolicyId, Value, lovelace_of, match}
 use cardano/transaction.{
   InlineDatum, Output, OutputReference, Transaction, find_script_outputs,
 }
@@ -22,6 +23,8 @@ fn one_side_deposit_agreement(
   transaction: Transaction,
   deposit_party: Int,
   my_output_reference: OutputReference,
+  strike_policy_id: PolicyId,
+  strike_asset_name: AssetName,
   strike_stake_credential: StakeCredential,
 ) {
   expect Some(datum) = datum
@@ -88,8 +91,8 @@ fn one_side_deposit_agreement(
     let expected_assets_locked_with_strike: Value =
       expected_assets_locked
         |> assets.add(
-            datum.strike_collateral_asset.policy_id,
-            datum.strike_collateral_asset.asset_name,
+            strike_policy_id,
+            strike_asset_name,
             datum.each_party_strike_collateral_asset_amount,
           )
 
@@ -121,6 +124,10 @@ fn both_sides_deposit_agreement(
   let two_outputs_to_agreement_validator: Bool =
     list.length(outputs_to_consume_forwards_validator) == 2
 
+  expect [expected_issuer_utxo,
+    expected_obligee_utxo] =
+    find_script_outputs(transaction.outputs, agreement_validator)
+
   let expected_issuer_datum =
     AgreementDatum {
       issuer_address_hash: datum.issuer_address_hash,
@@ -134,15 +141,13 @@ fn both_sides_deposit_agreement(
       exercise_contract_date: datum.exercise_contract_date,
       mint_asset: datum.mint_asset,
     }
-  expect Some(expected_issuer_utxo) =
-    list.find(
-      outputs_to_consume_forwards_validator,
-      fn(output) {
-        expect InlineDatum(output_datum) = output.datum
-        expect output_datum_typed: AgreementDatum = output_datum
-        output_datum_typed == expected_issuer_datum
-      },
-    )
+
+  let expected_issuer_datum_as_data: Data =
+    builtin.serialise_data(expected_issuer_datum)
+
+  expect InlineDatum(issuer_datum) = expected_issuer_utxo.datum
+
+  let issuer_datum_match: Bool = expected_issuer_datum_as_data == issuer_datum
 
   let expected_issuer_assets_locked: Value =
     assets.from_lovelace(min_lovelace_amount)
@@ -170,15 +175,13 @@ fn both_sides_deposit_agreement(
       mint_asset: datum.mint_asset,
     }
 
-  expect Some(expected_obligee_utxo) =
-    list.find(
-      outputs_to_consume_forwards_validator,
-      fn(output) {
-        expect InlineDatum(output_datum) = output.datum
-        expect output_datum_typed: AgreementDatum = output_datum
-        output_datum_typed == expected_obligee_datum
-      },
-    )
+  expect InlineDatum(obligee_datum) = expected_obligee_utxo.datum
+
+  let expected_obligee_datum_as_data: Data =
+    builtin.serialise_data(expected_obligee_datum)
+
+  let obligee_datum_match: Bool =
+    expected_obligee_datum_as_data == obligee_datum
 
   let expected_obligee_assets_locked: Value =
     assets.from_lovelace(min_lovelace_amount)
@@ -208,7 +211,7 @@ fn both_sides_deposit_agreement(
 
   let issuer_ref_script_empty = ref_script_empty(expected_issuer_utxo)
 
-  stake_credential_is_valid && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && obligee_ref_script_empty && issuer_ref_script_empty && expected_obligee_assets_locked_match && expected_issuer_assets_locked_match
+  stake_credential_is_valid && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && obligee_ref_script_empty && issuer_ref_script_empty && expected_obligee_assets_locked_match && expected_issuer_assets_locked_match && issuer_datum_match && obligee_datum_match
 }
 
 fn liquidate_collateral_valid(
@@ -216,6 +219,8 @@ fn liquidate_collateral_valid(
   transaction: Transaction,
   party: Int,
   liquidate_validator: ScriptHash,
+  strike_policy_id: PolicyId,
+  strike_asset_name: AssetName,
 ) {
   expect Some(datum) = datum
   let party_address_hash: AddressHash =
@@ -254,8 +259,8 @@ fn liquidate_collateral_valid(
     let expected_strike_collateral_asset_locked: Value =
       assets.from_lovelace(lovelace_of(output_to_collateral_validator.value))
         |> assets.add(
-            datum.strike_collateral_asset.policy_id,
-            datum.strike_collateral_asset.asset_name,
+            strike_policy_id,
+            strike_asset_name,
             datum.each_party_strike_collateral_asset_amount,
           )
 
@@ -276,6 +281,8 @@ pub fn liquidate_both_parties_valid(
   datum: Option<CollateralDatum>,
   transaction: Transaction,
   liquidate_validator: ScriptHash,
+  strike_policy_id: PolicyId,
+  strike_asset_name: AssetName,
   strike_consume_address_hash: AddressHash,
 ) {
   expect Some(datum) = datum
@@ -338,8 +345,8 @@ pub fn liquidate_both_parties_valid(
     let expected_strike_collateral_asset_locked: Value =
       assets.from_lovelace(lovelace_of(output_to_liquidate_validator.value))
         |> assets.add(
-            datum.strike_collateral_asset.policy_id,
-            datum.strike_collateral_asset.asset_name,
+            strike_policy_id,
+            strike_asset_name,
             datum.each_party_strike_collateral_asset_amount * 2,
           )
 
@@ -359,6 +366,8 @@ pub fn liquidate_both_parties_valid(
 validator collateral(
   agreement_validator: ScriptHash,
   liquidate_validator: ScriptHash,
+  strike_policy_id: PolicyId,
+  strike_asset_name: ByteArray,
   strike_consume_address_hash: AddressHash,
   strike_stake_credential: StakeCredential,
 ) {
@@ -375,6 +384,8 @@ validator collateral(
           self,
           deposit_party,
           my_output_reference,
+          strike_policy_id,
+          strike_asset_name,
           strike_stake_credential,
         )
 
@@ -392,6 +403,8 @@ validator collateral(
           self,
           liquidate_party,
           liquidate_validator,
+          strike_policy_id,
+          strike_asset_name,
         )
 
       LiquidateBothParties ->
@@ -399,6 +412,8 @@ validator collateral(
           datum,
           self,
           liquidate_validator,
+          strike_policy_id,
+          strike_asset_name,
           strike_consume_address_hash,
         )
     }

@@ -1,3 +1,4 @@
+use aiken/builtin
 use aiken/collection/list
 use cardano/address.{StakeCredential}
 use cardano/assets.{PolicyId, Value, match, quantity_of}
@@ -18,6 +19,8 @@ fn accept_forwards_contract_valid(
   transaction: Transaction,
   collateral_validator: ByteArray,
   obligee_info: ObligeeInfo,
+  strike_policy_id: PolicyId,
+  strike_asset_name: ByteArray,
   strike_stake_credential: StakeCredential,
 ) {
   expect Some(datum) = datum
@@ -42,19 +45,19 @@ fn accept_forwards_contract_valid(
       obligee_deposit_asset_amount: datum.obligee_deposit_asset_amount,
       collateral_asset: datum.collateral_asset,
       each_party_collateral_asset_amount: datum.collateral_asset_amount,
-      strike_collateral_asset: datum.strike_collateral_asset,
       each_party_strike_collateral_asset_amount: datum.each_party_strike_collateral_asset_amount,
       exercise_contract_date: datum.exercise_contract_date,
       mint_asset: datum.mint_asset,
     }
+
+  let datum_as_data: Data = builtin.serialise_data(expected_collateral_datum)
 
   expect Some(output_to_collateral_utxo) =
     list.find(
       outputs_to_collateral_validator,
       fn(output) {
         expect InlineDatum(output_datum) = output.datum
-        expect output_datum_typed: CollateralDatum = output_datum
-        output_datum_typed == expected_collateral_datum
+        datum_as_data == output_datum
       },
     )
 
@@ -95,8 +98,8 @@ fn accept_forwards_contract_valid(
     let expected_asset_locked_with_strike: Value =
       expected_assets_locked
         |> assets.add(
-            expected_collateral_datum.strike_collateral_asset.policy_id,
-            expected_collateral_datum.strike_collateral_asset.asset_name,
+            strike_policy_id,
+            strike_asset_name,
             expected_collateral_datum.each_party_strike_collateral_asset_amount * 2,
           )
 
@@ -139,6 +142,8 @@ fn create_forward_mint_valid(
   transaction: Transaction,
   policy_id: PolicyId,
   asset_name: ByteArray,
+  strike_policy_id: PolicyId,
+  strike_asset_name: ByteArray,
   strike_stake_credential: StakeCredential,
 ) -> Bool {
   let expected_mint = (policy_id, asset_name, 1)
@@ -183,8 +188,25 @@ fn create_forward_mint_valid(
 
   let ref_script_empty = ref_script_empty(output_to_forward_contract)
 
+  let deadline_not_passed =
+    output_datum_typed.exercise_contract_date > get_upper_bound(
+      transaction.validity_range,
+    )
+
+  let issuer_and_obligee_asset_different: Bool =
+    output_datum_typed.issuer_deposit_asset != output_datum_typed.obligee_deposit_asset
+
+  let issuer_asset_positive: Bool =
+    output_datum_typed.issuer_deposit_asset_amount > 0
+
+  let obligee_asset_positive: Bool =
+    output_datum_typed.obligee_deposit_asset_amount > 0
+
+  let mint_asset_valid =
+    output_datum_typed.mint_asset.policy_id == policy_id && output_datum_typed.mint_asset.asset_name == asset_name
+
   expect
-    valid_mint && output_is_to_forward_validator && stake_credential_is_valid && ref_script_empty
+    valid_mint && output_is_to_forward_validator && stake_credential_is_valid && ref_script_empty && deadline_not_passed && issuer_and_obligee_asset_different && issuer_asset_positive && obligee_asset_positive && mint_asset_valid
 
   let strike_is_used_as_collateral: Bool =
     output_datum_typed.each_party_strike_collateral_asset_amount > 0
@@ -193,8 +215,8 @@ fn create_forward_mint_valid(
     let expected_assets_locked_with_strike: Value =
       expected_assets_locked
         |> assets.add(
-            output_datum_typed.strike_collateral_asset.policy_id,
-            output_datum_typed.strike_collateral_asset.asset_name,
+            strike_policy_id,
+            strike_asset_name,
             output_datum_typed.each_party_strike_collateral_asset_amount,
           )
 
@@ -261,6 +283,8 @@ fn liquidate_burn_valid(
 validator forwards(
   asset_name: ByteArray,
   collateral_validator: ByteArray,
+  strike_policy_id: PolicyId,
+  strike_asset_name: ByteArray,
   strike_stake_credential: StakeCredential,
 ) {
   spend(
@@ -276,6 +300,8 @@ validator forwards(
           transaction,
           collateral_validator,
           obligee_info,
+          strike_policy_id,
+          strike_asset_name,
           strike_stake_credential,
         )
 
@@ -291,6 +317,8 @@ validator forwards(
           transaction,
           policy_id,
           asset_name,
+          strike_policy_id,
+          strike_asset_name,
           strike_stake_credential,
         )
       EnterForwardMint ->
