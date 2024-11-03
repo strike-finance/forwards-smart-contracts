@@ -1,11 +1,11 @@
 use aiken/collection/dict
 use aiken/collection/list
-use aiken/crypto.{ScriptHash}
+use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use aiken/interval.{Finite}
 use cardano/address.{Address, Credential, Script}
 use cardano/assets.{AssetName, PolicyId, Value, flatten, quantity_of, tokens}
 use cardano/transaction.{Input, Output, Transaction, ValidityRange}
-use types.{AddressHash, AssetClass, CollateralDatum}
+use types.{AssetClass, CollateralDatum, ForwardsDatum, Issuer, Party}
 
 pub fn get_script_hash(address: Address) -> ScriptHash {
   when address.payment_credential is {
@@ -54,79 +54,59 @@ pub fn get_address_outputs(
 
 pub fn get_datum_based_on_party(
   datum: CollateralDatum,
-  deposit_party: Int,
+  deposit_party: Party,
 ) -> CollateralDatum {
-  let is_issuer = deposit_party == 0
-  if is_issuer {
+  if deposit_party == Issuer {
     let expected_new_datum =
       CollateralDatum {
-        issuer_address_hash: datum.issuer_address_hash,
         issuer_has_deposited_asset: True,
-        issuer_deposit_asset: datum.issuer_deposit_asset,
-        issuer_deposit_asset_amount: datum.issuer_deposit_asset_amount,
         obligee_address_hash: datum.obligee_address_hash,
         obligee_has_deposited_asset: False,
-        obligee_deposit_asset: datum.obligee_deposit_asset,
-        obligee_deposit_asset_amount: datum.obligee_deposit_asset_amount,
-        collateral_asset: datum.collateral_asset,
-        each_party_collateral_asset_amount: datum.each_party_collateral_asset_amount,
-        each_party_strike_collateral_asset_amount: datum.each_party_strike_collateral_asset_amount,
-        exercise_contract_date: datum.exercise_contract_date,
-        mint_asset: datum.mint_asset,
+        associated_forwards_datum: datum.associated_forwards_datum,
       }
+
     expected_new_datum
   } else {
     let expected_new_datum =
       CollateralDatum {
-        issuer_address_hash: datum.issuer_address_hash,
         issuer_has_deposited_asset: False,
         obligee_address_hash: datum.obligee_address_hash,
         obligee_has_deposited_asset: True,
-        issuer_deposit_asset: datum.issuer_deposit_asset,
-        issuer_deposit_asset_amount: datum.issuer_deposit_asset_amount,
-        obligee_deposit_asset: datum.obligee_deposit_asset,
-        obligee_deposit_asset_amount: datum.obligee_deposit_asset_amount,
-        collateral_asset: datum.collateral_asset,
-        each_party_collateral_asset_amount: datum.each_party_collateral_asset_amount,
-        each_party_strike_collateral_asset_amount: datum.each_party_strike_collateral_asset_amount,
-        exercise_contract_date: datum.exercise_contract_date,
-        mint_asset: datum.mint_asset,
+        associated_forwards_datum: datum.associated_forwards_datum,
       }
+
     expected_new_datum
   }
 }
 
 pub fn get_asset_locked_based_on_party(
   datum: CollateralDatum,
-  deposit_party: Int,
+  deposit_party: Party,
 ) -> AssetClass {
-  let is_issuer = deposit_party == 0
-  if is_issuer {
-    datum.issuer_deposit_asset
+  if deposit_party == Issuer {
+    datum.associated_forwards_datum.issuer_deposit_asset
   } else {
-    datum.obligee_deposit_asset
+    datum.associated_forwards_datum.obligee_deposit_asset
   }
 }
 
 pub fn get_asset_amount_locked_based_on_party(
   datum: CollateralDatum,
-  deposit_party: Int,
+  deposit_party: Party,
 ) -> Int {
-  let is_issuer = deposit_party == 0
-  if is_issuer {
-    datum.issuer_deposit_asset_amount
+  if deposit_party == Issuer {
+    datum.associated_forwards_datum.issuer_deposit_asset_amount
   } else {
-    datum.obligee_deposit_asset_amount
+    datum.associated_forwards_datum.obligee_deposit_asset_amount
   }
 }
 
 pub fn get_address_hash_based_on_party(
   datum: CollateralDatum,
-  deposit_party: Int,
-) -> AddressHash {
-  let is_issuer = deposit_party == 0
-  if is_issuer {
-    datum.issuer_address_hash
+  deposit_party: Party,
+) -> VerificationKeyHash {
+  if deposit_party == Issuer {
+    datum.associated_forwards_datum.issuer_address_hash
   } else {
     datum.obligee_address_hash
   }
@@ -134,10 +114,9 @@ pub fn get_address_hash_based_on_party(
 
 pub fn get_party_has_deposited_asset(
   datum: CollateralDatum,
-  deposit_party: Int,
+  deposit_party: Party,
 ) -> Bool {
-  let is_issuer = deposit_party == 0
-  if is_issuer {
+  if deposit_party == Issuer {
     datum.issuer_has_deposited_asset
   } else {
     datum.obligee_has_deposited_asset
@@ -177,19 +156,19 @@ pub fn get_asset_to_address_valid(
       get_asset_to_address(
         outputs,
         address,
-        datum.issuer_deposit_asset.policy_id,
-        datum.issuer_deposit_asset.asset_name,
+        datum.associated_forwards_datum.issuer_deposit_asset.policy_id,
+        datum.associated_forwards_datum.issuer_deposit_asset.asset_name,
       )
-    amount_to_issuer == datum.issuer_deposit_asset_amount
+    amount_to_issuer == datum.associated_forwards_datum.issuer_deposit_asset_amount
   } else {
     let amount_to_obligee =
       get_asset_to_address(
         outputs,
         address,
-        datum.obligee_deposit_asset.policy_id,
-        datum.obligee_deposit_asset.asset_name,
+        datum.associated_forwards_datum.obligee_deposit_asset.policy_id,
+        datum.associated_forwards_datum.obligee_deposit_asset.asset_name,
       )
-    amount_to_obligee == datum.obligee_deposit_asset_amount
+    amount_to_obligee == datum.associated_forwards_datum.obligee_deposit_asset_amount
   }
 }
 
@@ -218,11 +197,14 @@ pub fn ref_script_empty(output: Output) -> Bool {
 
 pub fn signed_by_party(
   transaction: Transaction,
-  party: Int,
+  party: Party,
   datum: CollateralDatum,
 ) -> Bool {
-  if party == 0 {
-    list.has(transaction.extra_signatories, datum.issuer_address_hash)
+  if party == Issuer {
+    list.has(
+      transaction.extra_signatories,
+      datum.associated_forwards_datum.issuer_address_hash,
+    )
   } else {
     list.has(transaction.extra_signatories, datum.obligee_address_hash)
   }

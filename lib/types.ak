@@ -1,4 +1,4 @@
-use aiken/crypto.{Blake2b_224, Hash, Script, VerificationKey}
+use aiken/crypto.{VerificationKeyHash}
 use cardano/assets.{AssetName, PolicyId}
 
 pub type AssetClass {
@@ -6,35 +6,13 @@ pub type AssetClass {
   asset_name: AssetName,
 }
 
-pub type AddressHash =
-  Hash<Blake2b_224, VerificationKey>
-
-pub type ScriptHash =
-  Hash<Blake2b_224, Script>
-
 pub type POSIXTime =
   Int
 
 pub type ForwardsDatum {
-  issuer_address_hash: AddressHash,
+  issuer_address_hash: VerificationKeyHash,
   issuer_deposit_asset: AssetClass,
   issuer_deposit_asset_amount: Int,
-  obligee_deposit_asset: AssetClass,
-  obligee_deposit_asset_amount: Int,
-  collateral_asset: AssetClass,
-  collateral_asset_amount: Int,
-  each_party_strike_collateral_asset_amount: Int,
-  exercise_contract_date: POSIXTime,
-  mint_asset: AssetClass,
-}
-
-pub type CollateralDatum {
-  issuer_address_hash: AddressHash,
-  issuer_has_deposited_asset: Bool,
-  issuer_deposit_asset: AssetClass,
-  issuer_deposit_asset_amount: Int,
-  obligee_address_hash: AddressHash,
-  obligee_has_deposited_asset: Bool,
   obligee_deposit_asset: AssetClass,
   obligee_deposit_asset_amount: Int,
   collateral_asset: AssetClass,
@@ -44,9 +22,16 @@ pub type CollateralDatum {
   mint_asset: AssetClass,
 }
 
+pub type CollateralDatum {
+  issuer_has_deposited_asset: Bool,
+  obligee_address_hash: VerificationKeyHash,
+  obligee_has_deposited_asset: Bool,
+  associated_forwards_datum: ForwardsDatum,
+}
+
 pub type AgreementDatum {
-  issuer_address_hash: AddressHash,
-  utxo_owner_address_hash: AddressHash,
+  issuer_address_hash: VerificationKeyHash,
+  utxo_owner_address_hash: VerificationKeyHash,
   issuer_deposit_asset: AssetClass,
   issuer_deposit_asset_amount: Int,
   obligee_deposit_asset: AssetClass,
@@ -58,14 +43,19 @@ pub type AgreementDatum {
 }
 
 pub type ObligeeInfo {
-  obligee_address_hash: AddressHash,
+  obligee_address_hash: VerificationKeyHash,
+}
+
+pub type Party {
+  Issuer
+  Obligee
 }
 
 // 0 = issuer, 1 = obligee
 pub type CollateralRedeemerAction {
-  OneSideDepositAgreement(Int, Int)
-  BothSidesDepositAgreement(Int)
-  LiquidateCollateral(Int, Int)
+  OneSideDepositAgreement(Party, Int)
+  BothSidesDepositAgreement(Party)
+  LiquidateCollateral(Party, Int)
   LiquidateBothParties(Int, Int)
 }
 

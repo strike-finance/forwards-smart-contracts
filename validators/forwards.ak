@@ -1,4 +1,5 @@
 use aiken/collection/list
+use aiken/crypto.{ScriptHash}
 use cardano/address.{Script, StakeCredential}
 use cardano/assets.{PolicyId, Value, match}
 use cardano/transaction.{InlineDatum, Output, Transaction}
@@ -6,7 +7,7 @@ use constants.{min_lovelace_amount}
 use types.{
   AcceptForwardsContract, CancelForwardsContract, CollateralDatum,
   CreateForwardMint, EnterForwardMint, ForwardsDatum, ForwardsRedeemer,
-  LiquidateBurn, MintRedeemer, ObligeeInfo, ScriptHash, SingleBurn,
+  LiquidateBurn, MintRedeemer, ObligeeInfo, SingleBurn,
 }
 use utils.{
   get_script_hash, get_upper_bound, get_validators_inputs, ref_script_empty,
@@ -39,19 +40,21 @@ fn accept_forwards_contract_valid(
 
   let expected_collateral_datum =
     CollateralDatum {
-      issuer_address_hash: datum.issuer_address_hash,
       issuer_has_deposited_asset: False,
-      issuer_deposit_asset: datum.issuer_deposit_asset,
-      issuer_deposit_asset_amount: datum.issuer_deposit_asset_amount,
       obligee_address_hash: obligee_info.obligee_address_hash,
       obligee_has_deposited_asset: False,
-      obligee_deposit_asset: datum.obligee_deposit_asset,
-      obligee_deposit_asset_amount: datum.obligee_deposit_asset_amount,
-      collateral_asset: datum.collateral_asset,
-      each_party_collateral_asset_amount: datum.collateral_asset_amount,
-      each_party_strike_collateral_asset_amount: datum.each_party_strike_collateral_asset_amount,
-      exercise_contract_date: datum.exercise_contract_date,
-      mint_asset: datum.mint_asset,
+      associated_forwards_datum: ForwardsDatum {
+        issuer_address_hash: datum.issuer_address_hash,
+        issuer_deposit_asset: datum.issuer_deposit_asset,
+        issuer_deposit_asset_amount: datum.issuer_deposit_asset_amount,
+        obligee_deposit_asset: datum.obligee_deposit_asset,
+        obligee_deposit_asset_amount: datum.obligee_deposit_asset_amount,
+        collateral_asset: datum.collateral_asset,
+        each_party_collateral_asset_amount: datum.each_party_collateral_asset_amount,
+        each_party_strike_collateral_asset_amount: datum.each_party_strike_collateral_asset_amount,
+        exercise_contract_date: datum.exercise_contract_date,
+        mint_asset: datum.mint_asset,
+      },
     }
 
   let datum_as_data: Data = expected_collateral_datum
@@ -65,7 +68,7 @@ fn accept_forwards_contract_valid(
       |> assets.add(
           datum.collateral_asset.policy_id,
           datum.collateral_asset.asset_name,
-          datum.collateral_asset_amount * 2,
+          datum.each_party_collateral_asset_amount * 2,
         )
       |> assets.add(datum.mint_asset.policy_id, datum.mint_asset.asset_name, 2)
 
@@ -81,9 +84,7 @@ fn accept_forwards_contract_valid(
     output_to_collateral_stake_credential == strike_stake_credential
 
   let deadline_not_passed =
-    expected_collateral_datum.exercise_contract_date > get_upper_bound(
-      transaction.validity_range,
-    )
+    datum.exercise_contract_date > get_upper_bound(transaction.validity_range)
 
   let ref_script_empty = ref_script_empty(output_to_collateral_utxo)
 
@@ -91,7 +92,7 @@ fn accept_forwards_contract_valid(
     only_one_validator_input && stake_credential_is_valid && valid_mint && deadline_not_passed && ref_script_empty && expected_collateral_datum_match && output_is_to_collateral_validator
 
   let strike_is_used_as_collateral: Bool =
-    expected_collateral_datum.each_party_strike_collateral_asset_amount > 0
+    datum.each_party_strike_collateral_asset_amount > 0
 
   if strike_is_used_as_collateral {
     let expected_asset_locked_with_strike: Value =
@@ -99,7 +100,7 @@ fn accept_forwards_contract_valid(
         |> assets.add(
             strike_policy_id,
             strike_asset_name,
-            expected_collateral_datum.each_party_strike_collateral_asset_amount * 2,
+            datum.each_party_strike_collateral_asset_amount * 2,
           )
 
     let assets_match: Bool =
@@ -172,7 +173,7 @@ fn create_forward_mint_valid(
       |> assets.add(
           output_datum_typed.collateral_asset.policy_id,
           output_datum_typed.collateral_asset.asset_name,
-          output_datum_typed.collateral_asset_amount,
+          output_datum_typed.each_party_collateral_asset_amount,
         )
       |> assets.add(policy_id, asset_name, 1)
 
