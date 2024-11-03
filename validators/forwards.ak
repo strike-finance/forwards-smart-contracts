@@ -1,4 +1,3 @@
-use aiken/builtin
 use aiken/collection/list
 use cardano/address.{StakeCredential}
 use cardano/assets.{PolicyId, Value, match, quantity_of}
@@ -50,7 +49,7 @@ fn accept_forwards_contract_valid(
       mint_asset: datum.mint_asset,
     }
 
-  let datum_as_data: Data = builtin.serialise_data(expected_collateral_datum)
+  let datum_as_data: Data = expected_collateral_datum
 
   expect Some(output_to_collateral_utxo) =
     list.find(
