@@ -37,7 +37,7 @@ pub type AgreementDatum {
   obligee_deposit_asset: AssetClass,
   obligee_deposit_asset_amount: Int,
   collateral_asset: AssetClass,
-  collateral_asset_amount: Int,
+  each_party_collateral_asset_amount: Int,
   exercise_contract_date: POSIXTime,
   mint_asset: AssetClass,
 }
@@ -66,7 +66,6 @@ pub type ForwardsRedeemer {
 
 pub type MintRedeemer {
   CreateForwardMint(Int)
-  EnterForwardMint
-  SingleBurn
-  LiquidateBurn
+  EnterForwardMint(Int)
+  Burn(Int)
 }

@@ -3,7 +3,7 @@ use aiken/collection/list
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use aiken/interval.{Finite}
 use cardano/address.{Address, Credential, Script}
-use cardano/assets.{AssetName, PolicyId, Value, flatten, quantity_of, tokens}
+use cardano/assets.{PolicyId, Value, flatten, tokens}
 use cardano/transaction.{Input, Output, Transaction, ValidityRange}
 use types.{AssetClass, CollateralDatum, ForwardsDatum, Issuer, Party}
 
@@ -38,20 +38,6 @@ pub fn get_upper_bound(range: ValidityRange) -> Int {
   upper_bound
 }
 
-pub fn get_validators_outputs(transaction: Transaction) -> List<Output> {
-  list.filter(
-    transaction.outputs,
-    fn(output) { is_script_credential(output.address.payment_credential) },
-  )
-}
-
-pub fn get_address_outputs(
-  transaction: Transaction,
-  address: Address,
-) -> List<Output> {
-  list.filter(transaction.outputs, fn(output) { output.address == address })
-}
-
 pub fn get_datum_based_on_party(
   datum: CollateralDatum,
   deposit_party: Party,
@@ -79,36 +65,29 @@ pub fn get_datum_based_on_party(
   }
 }
 
-pub fn get_asset_locked_based_on_party(
-  datum: CollateralDatum,
+pub fn get_asset_and_amount_locked_based_on_party(
   deposit_party: Party,
-) -> AssetClass {
+  issuer_deposit_asset: AssetClass,
+  issuer_deposit_asset_amount: Int,
+  obligee_deposit_asset: AssetClass,
+  obligee_deposit_asset_amount: Int,
+) -> (AssetClass, Int) {
   if deposit_party == Issuer {
-    datum.associated_forwards_datum.issuer_deposit_asset
+    (issuer_deposit_asset, issuer_deposit_asset_amount)
   } else {
-    datum.associated_forwards_datum.obligee_deposit_asset
-  }
-}
-
-pub fn get_asset_amount_locked_based_on_party(
-  datum: CollateralDatum,
-  deposit_party: Party,
-) -> Int {
-  if deposit_party == Issuer {
-    datum.associated_forwards_datum.issuer_deposit_asset_amount
-  } else {
-    datum.associated_forwards_datum.obligee_deposit_asset_amount
+    (obligee_deposit_asset, obligee_deposit_asset_amount)
   }
 }
 
 pub fn get_address_hash_based_on_party(
-  datum: CollateralDatum,
   deposit_party: Party,
+  issuer_address_hash: VerificationKeyHash,
+  obligee_address_hash: VerificationKeyHash,
 ) -> VerificationKeyHash {
   if deposit_party == Issuer {
-    datum.associated_forwards_datum.issuer_address_hash
+    issuer_address_hash
   } else {
-    datum.obligee_address_hash
+    obligee_address_hash
   }
 }
 
@@ -120,55 +99,6 @@ pub fn get_party_has_deposited_asset(
     datum.issuer_has_deposited_asset
   } else {
     datum.obligee_has_deposited_asset
-  }
-}
-
-pub fn get_asset_to_address(
-  outputs: List<Output>,
-  address: Address,
-  policy_id: PolicyId,
-  asset_name: AssetName,
-) -> Int {
-  let outputs_to_address =
-    list.filter(
-      outputs,
-      fn(output) {
-        output.address.payment_credential == address.payment_credential
-      },
-    )
-
-  list.reduce(
-    outputs_to_address,
-    0,
-    fn(acc, output) { acc + quantity_of(output.value, policy_id, asset_name) },
-  )
-}
-
-pub fn get_asset_to_address_valid(
-  datum: CollateralDatum,
-  party: Int,
-  outputs: List<Output>,
-  address: Address,
-) -> Bool {
-  let is_issuer = party == 0
-  if is_issuer {
-    let amount_to_issuer =
-      get_asset_to_address(
-        outputs,
-        address,
-        datum.associated_forwards_datum.issuer_deposit_asset.policy_id,
-        datum.associated_forwards_datum.issuer_deposit_asset.asset_name,
-      )
-    amount_to_issuer == datum.associated_forwards_datum.issuer_deposit_asset_amount
-  } else {
-    let amount_to_obligee =
-      get_asset_to_address(
-        outputs,
-        address,
-        datum.associated_forwards_datum.obligee_deposit_asset.policy_id,
-        datum.associated_forwards_datum.obligee_deposit_asset.asset_name,
-      )
-    amount_to_obligee == datum.associated_forwards_datum.obligee_deposit_asset_amount
   }
 }
 
@@ -189,10 +119,6 @@ fn only_one_token_in_policy_minted(mints, expected_minting) {
   // Check for the policy mints
   list.length(dict.keys(tokens(mints, policy_id))) == 1
   // Total count of minted unique tokens with policy is 1
-}
-
-pub fn ref_script_empty(output: Output) -> Bool {
-  output.reference_script == None
 }
 
 pub fn signed_by_party(
