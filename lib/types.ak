@@ -19,7 +19,7 @@ pub type ForwardsDatum {
   each_party_collateral_asset_amount: Int,
   each_party_strike_collateral_asset_amount: Int,
   exercise_contract_date: POSIXTime,
-  mint_asset: AssetClass,
+  mint_asset_policy_id: PolicyId,
 }
 
 pub type CollateralDatum {
@@ -30,16 +30,8 @@ pub type CollateralDatum {
 }
 
 pub type AgreementDatum {
-  issuer_address_hash: VerificationKeyHash,
   utxo_owner_address_hash: VerificationKeyHash,
-  issuer_deposit_asset: AssetClass,
-  issuer_deposit_asset_amount: Int,
-  obligee_deposit_asset: AssetClass,
-  obligee_deposit_asset_amount: Int,
-  collateral_asset: AssetClass,
-  each_party_collateral_asset_amount: Int,
-  exercise_contract_date: POSIXTime,
-  mint_asset: AssetClass,
+  associated_forwards_datum: ForwardsDatum,
 }
 
 pub type ObligeeInfo {
@@ -55,8 +47,8 @@ pub type Party {
 pub type CollateralRedeemerAction {
   OneSideDepositAgreement(Party, Int)
   BothSidesDepositAgreement(Party)
-  LiquidateCollateral(Party, Int)
-  LiquidateBothParties(Int, Int)
+  LiquidateCollateral(Party)
+  LiquidateBothParties(Int)
 }
 
 pub type ForwardsRedeemer {
