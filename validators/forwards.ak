@@ -1,6 +1,6 @@
 use aiken/collection/dict
 use aiken/collection/list
-use aiken/crypto.{ScriptHash}
+use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Script}
 use cardano/assets.{PolicyId, Value, flatten, match, policies, tokens}
 use cardano/transaction.{InlineDatum, Output, Transaction}
@@ -11,7 +11,7 @@ use constants.{
 use types.{
   AcceptForwardsContract, CancelForwardsContract, CollateralDatum,
   CreateForwardMint, EnterForwardMint, ForwardsDatum, ForwardsRedeemer,
-  LiquidateBurn, MintRedeemer, ObligeeInfo, SingleBurn,
+  LiquidateBurn, MintRedeemer, SingleBurn,
 }
 use utils.{get_script_hash, get_upper_bound, get_validators_inputs}
 
@@ -23,12 +23,12 @@ validator forwards(collateral_validator: ByteArray) {
     transaction: Transaction,
   ) {
     when redeemer is {
-      AcceptForwardsContract(obligee_info, output_index) ->
+      AcceptForwardsContract(obligee_address_hash, output_index) ->
         accept_forwards_contract_valid(
           datum,
           transaction,
           collateral_validator,
-          obligee_info,
+          obligee_address_hash,
           output_index,
         )
 
@@ -41,12 +41,12 @@ validator forwards(collateral_validator: ByteArray) {
     when rdmr is {
       CreateForwardMint(output_index) ->
         create_forward_mint_valid(transaction, policy_id, output_index)
-      EnterForwardMint(obligee_info, output_index) ->
+      EnterForwardMint(obligee_address_hash, output_index) ->
         enter_forward_mint_valid(
           transaction,
           policy_id,
           output_index,
-          obligee_info,
+          obligee_address_hash,
         )
       SingleBurn -> single_burn_valid(transaction, policy_id)
       LiquidateBurn -> liquidate_burn_valid(transaction, policy_id)
@@ -62,7 +62,7 @@ fn accept_forwards_contract_valid(
   maybe_datum: Option<ForwardsDatum>,
   transaction: Transaction,
   collateral_validator: ByteArray,
-  obligee_info: ObligeeInfo,
+  obligee_address_hash: VerificationKeyHash,
   output_index: Int,
 ) {
   let Transaction { outputs, validity_range, .. } = transaction
@@ -92,7 +92,7 @@ fn accept_forwards_contract_valid(
   let expected_collateral_datum =
     CollateralDatum {
       issuer_has_deposited_asset: False,
-      obligee_address_hash: obligee_info.obligee_address_hash,
+      obligee_address_hash,
       obligee_has_deposited_asset: False,
       associated_forwards_datum: datum,
     }
@@ -111,7 +111,7 @@ fn accept_forwards_contract_valid(
           each_party_collateral_asset_amount * 2,
         )
       |> assets.add(mint_asset_policy_id, datum.issuer_address_hash, 1)
-      |> assets.add(mint_asset_policy_id, obligee_info.obligee_address_hash, 1)
+      |> assets.add(mint_asset_policy_id, obligee_address_hash, 1)
 
   expect Some(output_to_collateral_stake_credential) =
     output_to_collateral_utxo.address.stake_credential
@@ -279,7 +279,7 @@ fn enter_forward_mint_valid(
   transaction: Transaction,
   policy_id: PolicyId,
   output_index: Int,
-  obligee_info: ObligeeInfo,
+  obligee_address_hash: VerificationKeyHash,
 ) -> Bool {
   let Transaction { mint, .. } = transaction
 
@@ -292,7 +292,7 @@ fn enter_forward_mint_valid(
   let input_is_from_forward_validator: Bool =
     get_script_hash(input.output.address) == policy_id
 
-  let expected_mint = [(policy_id, obligee_info.obligee_address_hash, 1)]
+  let expected_mint = [(policy_id, obligee_address_hash, 1)]
   let valid_mint = expected_mint == flatten(mint)
 
   valid_mint && only_one_validator_input && input_is_from_forward_validator

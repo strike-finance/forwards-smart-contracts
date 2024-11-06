@@ -34,10 +34,6 @@ pub type AgreementDatum {
   associated_forwards_datum: ForwardsDatum,
 }
 
-pub type ObligeeInfo {
-  obligee_address_hash: VerificationKeyHash,
-}
-
 pub type Party {
   Issuer
   Obligee
@@ -52,13 +48,13 @@ pub type CollateralRedeemerAction {
 }
 
 pub type ForwardsRedeemer {
-  AcceptForwardsContract(ObligeeInfo, Int)
+  AcceptForwardsContract(VerificationKeyHash, Int)
   CancelForwardsContract
 }
 
 pub type MintRedeemer {
   CreateForwardMint(Int)
-  EnterForwardMint(ObligeeInfo, Int)
+  EnterForwardMint(VerificationKeyHash, Int)
   SingleBurn
   LiquidateBurn
 }
