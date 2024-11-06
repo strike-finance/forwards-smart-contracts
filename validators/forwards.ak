@@ -41,8 +41,13 @@ validator forwards(collateral_validator: ByteArray) {
     when rdmr is {
       CreateForwardMint(output_index) ->
         create_forward_mint_valid(transaction, policy_id, output_index)
-      EnterForwardMint(output_index) ->
-        enter_forward_mint_valid(transaction, policy_id, output_index)
+      EnterForwardMint(obligee_info, output_index) ->
+        enter_forward_mint_valid(
+          transaction,
+          policy_id,
+          output_index,
+          obligee_info,
+        )
       SingleBurn -> single_burn_valid(transaction, policy_id)
       LiquidateBurn -> liquidate_burn_valid(transaction, policy_id)
     }
@@ -60,7 +65,7 @@ fn accept_forwards_contract_valid(
   obligee_info: ObligeeInfo,
   output_index: Int,
 ) {
-  let Transaction { outputs, mint, validity_range, .. } = transaction
+  let Transaction { outputs, validity_range, .. } = transaction
 
   expect Some(datum) = maybe_datum
 
@@ -108,11 +113,6 @@ fn accept_forwards_contract_valid(
       |> assets.add(mint_asset_policy_id, datum.issuer_address_hash, 1)
       |> assets.add(mint_asset_policy_id, obligee_info.obligee_address_hash, 1)
 
-  let expected_mint_value =
-    [(mint_asset_policy_id, obligee_info.obligee_address_hash, 1)]
-
-  let valid_mint: Bool = expected_mint_value == flatten(mint)
-
   expect Some(output_to_collateral_stake_credential) =
     output_to_collateral_utxo.address.stake_credential
 
@@ -125,7 +125,7 @@ fn accept_forwards_contract_valid(
   let ref_script_empty = output_to_collateral_utxo.reference_script == None
 
   expect
-    only_one_validator_input && stake_credential_is_valid && valid_mint && deadline_not_passed && ref_script_empty && expected_collateral_datum_match && output_is_to_collateral_validator
+    only_one_validator_input && stake_credential_is_valid && deadline_not_passed && ref_script_empty && expected_collateral_datum_match && output_is_to_collateral_validator
 
   let strike_is_used_as_collateral: Bool =
     each_party_strike_collateral_asset_amount > 0
@@ -279,6 +279,7 @@ fn enter_forward_mint_valid(
   transaction: Transaction,
   policy_id: PolicyId,
   output_index: Int,
+  obligee_info: ObligeeInfo,
 ) -> Bool {
   let Transaction { mint, .. } = transaction
 
@@ -291,14 +292,10 @@ fn enter_forward_mint_valid(
   let input_is_from_forward_validator: Bool =
     get_script_hash(input.output.address) == policy_id
 
-  let policies_mint = policies(mint)
-  let only_one_mint_policy = list.length(policies_mint) == 1
+  let expected_mint = [(policy_id, obligee_info.obligee_address_hash, 1)]
+  let valid_mint = expected_mint == flatten(mint)
 
-  let tokens = tokens(mint, policy_id)
-  let tokens_minted = dict.size(tokens)
-  let only_one_minted_amount = tokens_minted == 1
-
-  only_one_minted_amount && only_one_validator_input && input_is_from_forward_validator && only_one_mint_policy
+  valid_mint && only_one_validator_input && input_is_from_forward_validator
 }
 
 fn single_burn_valid(transaction: Transaction, policy_id: PolicyId) -> Bool {

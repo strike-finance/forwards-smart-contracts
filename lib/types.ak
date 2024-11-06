@@ -58,7 +58,7 @@ pub type ForwardsRedeemer {
 
 pub type MintRedeemer {
   CreateForwardMint(Int)
-  EnterForwardMint(Int)
+  EnterForwardMint(ObligeeInfo, Int)
   SingleBurn
   LiquidateBurn
 }
