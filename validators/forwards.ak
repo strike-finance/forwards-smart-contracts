@@ -43,7 +43,6 @@ validator forwards(collateral_validator: ByteArray) {
         create_forward_mint_valid(transaction, policy_id, output_index)
       EnterForwardMint(output_index) ->
         enter_forward_mint_valid(transaction, policy_id, output_index)
-
       Burn(burnt_amount) -> burn_valid(transaction, policy_id, burnt_amount)
     }
   }
@@ -282,10 +281,11 @@ fn enter_forward_mint_valid(
 ) -> Bool {
   let Transaction { mint, .. } = transaction
 
-  let only_one_validator_input: Bool =
-    list.length(get_validators_inputs(transaction)) == 1
+  let all_inputs_from_script = get_validators_inputs(transaction)
 
-  expect Some(input) = list.at(get_validators_inputs(transaction), output_index)
+  let only_one_validator_input: Bool = list.length(all_inputs_from_script) == 1
+
+  expect Some(input) = list.at(all_inputs_from_script, output_index)
 
   let input_is_from_forward_validator: Bool =
     get_script_hash(input.output.address) == policy_id

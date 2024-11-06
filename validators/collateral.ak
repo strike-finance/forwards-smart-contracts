@@ -166,14 +166,14 @@ fn one_side_deposit_agreement_valid(
 }
 
 fn both_sides_deposit_agreement_valid(
-  datum: Option<CollateralDatum>,
+  maybe_datum: Option<CollateralDatum>,
   transaction: Transaction,
   deposit_party: Party,
   agreement_validator: ScriptHash,
 ) {
   let Transaction { outputs, validity_range, .. } = transaction
 
-  expect Some(datum) = datum
+  expect Some(datum) = maybe_datum
   let CollateralDatum {
     issuer_has_deposited_asset,
     obligee_has_deposited_asset,
@@ -281,13 +281,13 @@ fn both_sides_deposit_agreement_valid(
 }
 
 fn liquidate_collateral_valid(
-  datum: Option<CollateralDatum>,
+  maybe_datum: Option<CollateralDatum>,
   transaction: Transaction,
   liquidate_party: Party,
 ) {
   let Transaction { mint, outputs, validity_range, .. } = transaction
 
-  expect Some(datum) = datum
+  expect Some(datum) = maybe_datum
 
   let CollateralDatum { obligee_address_hash, .. } = datum
 
@@ -359,13 +359,13 @@ fn liquidate_collateral_valid(
 }
 
 pub fn liquidate_both_parties_valid(
-  datum: Option<CollateralDatum>,
+  maybe_datum: Option<CollateralDatum>,
   transaction: Transaction,
   strike_consume_output_index: Int,
 ) {
   let Transaction { mint, outputs, validity_range, .. } = transaction
 
-  expect Some(datum) = datum
+  expect Some(datum) = maybe_datum
 
   let CollateralDatum { obligee_address_hash, .. } = datum
 
