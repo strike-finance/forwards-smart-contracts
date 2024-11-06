@@ -9,9 +9,9 @@ use constants.{
   strike_stake_credential,
 }
 use types.{
-  AcceptForwardsContract, Burn, CancelForwardsContract, CollateralDatum,
+  AcceptForwardsContract, CancelForwardsContract, CollateralDatum,
   CreateForwardMint, EnterForwardMint, ForwardsDatum, ForwardsRedeemer,
-  MintRedeemer, ObligeeInfo,
+  LiquidateBurn, MintRedeemer, ObligeeInfo, SingleBurn,
 }
 use utils.{get_script_hash, get_upper_bound, get_validators_inputs}
 
@@ -43,7 +43,8 @@ validator forwards(collateral_validator: ByteArray) {
         create_forward_mint_valid(transaction, policy_id, output_index)
       EnterForwardMint(output_index) ->
         enter_forward_mint_valid(transaction, policy_id, output_index)
-      Burn(burnt_amount) -> burn_valid(transaction, policy_id, burnt_amount)
+      SingleBurn -> single_burn_valid(transaction, policy_id)
+      LiquidateBurn -> liquidate_burn_valid(transaction, policy_id)
     }
   }
 
@@ -298,6 +299,14 @@ fn enter_forward_mint_valid(
   let only_one_minted_amount = tokens_minted == 1
 
   only_one_minted_amount && only_one_validator_input && input_is_from_forward_validator && only_one_mint_policy
+}
+
+fn single_burn_valid(transaction: Transaction, policy_id: PolicyId) -> Bool {
+  burn_valid(transaction, policy_id, 1)
+}
+
+fn liquidate_burn_valid(transaction: Transaction, policy_id: PolicyId) -> Bool {
+  burn_valid(transaction, policy_id, 2)
 }
 
 fn burn_valid(

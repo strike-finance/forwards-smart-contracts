@@ -27,9 +27,8 @@ validator agreement(
     let must_be_signed_by_owner =
       list.has(extra_signatories, utxo_owner_address_hash)
 
-    let asset_name: AssetName = utxo_owner_address_hash
-
-    let expected_mint_value = [(mint_asset_policy_id, asset_name, -1)]
+    let expected_mint_value =
+      [(mint_asset_policy_id, utxo_owner_address_hash, -1)]
 
     let valid_mint: Bool = expected_mint_value == assets.flatten(mint)
 
