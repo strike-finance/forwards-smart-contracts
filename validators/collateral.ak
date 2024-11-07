@@ -1,6 +1,6 @@
 use aiken/collection/list
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
-use cardano/address.{Script, StakeCredential, from_verification_key}
+use cardano/address.{StakeCredential, from_verification_key}
 use cardano/assets.{AssetName, PolicyId, Value, lovelace_of, match}
 use cardano/transaction.{
   InlineDatum, Output, OutputReference, Transaction, find_script_outputs,
@@ -12,23 +12,22 @@ use types.{
   Obligee, OneSideDepositAgreement, Party,
 }
 use utils.{
-  get_address_hash_based_on_party, get_asset_amount_locked_based_on_party,
-  get_asset_locked_based_on_party, get_datum_based_on_party, get_lower_bound,
-  get_party_has_deposited_asset, get_upper_bound, get_validators_inputs,
-  ref_script_empty, signed_by_party, validate_token_mint,
+  get_asset_amount_locked_based_on_party, get_asset_locked_based_on_party,
+  get_datum_based_on_party, get_lower_bound, get_party_has_deposited_asset,
+  get_upper_bound, get_validators_inputs, ref_script_empty, signed_by_party,
+  validate_token_mint,
 }
 
 fn one_side_deposit_agreement(
-  datum: Option<CollateralDatum>,
+  maybe_datum: Option<CollateralDatum>,
   transaction: Transaction,
   deposit_party: Party,
   my_output_reference: OutputReference,
   strike_policy_id: PolicyId,
   strike_asset_name: AssetName,
-  strike_stake_credential: StakeCredential,
   output_index: Int,
 ) {
-  expect Some(datum) = datum
+  expect Some(datum) = maybe_datum
 
   // // update the collateral datum, to say true, check the asset has actually been deposited, make sure deadline not passed, and it has not been deposited already 
   expect Some(input_from_validator) =
@@ -43,12 +42,12 @@ fn one_side_deposit_agreement(
   expect InlineDatum(output_datum) = output_to_validator.datum
   expect output_datum_typed: CollateralDatum = output_datum
 
-  let expected_new_datum = get_datum_based_on_party(datum, deposit_party)
+  let expected_new_datum: Data = get_datum_based_on_party(datum, deposit_party)
 
   let only_one_validator_input: Bool =
     list.length(get_validators_inputs(transaction)) == 1
 
-  let updated_datum_correct: Bool = output_datum_typed == expected_new_datum
+  let updated_datum_correct: Bool = output_datum == expected_new_datum
 
   let deadline_not_passed: Bool =
     datum.associated_forwards_datum.exercise_contract_date > get_upper_bound(
@@ -79,12 +78,6 @@ fn one_side_deposit_agreement(
           expected_asset_amount_locked,
         )
 
-  expect Some(output_stake_credential) =
-    output_to_validator.address.stake_credential
-
-  let stake_credential_is_valid =
-    output_stake_credential == strike_stake_credential
-
   let ref_script_empty = ref_script_empty(output_to_validator)
 
   let no_side_has_deposited_asset: Bool =
@@ -94,7 +87,7 @@ fn one_side_deposit_agreement(
     signed_by_party(transaction, deposit_party, datum)
 
   expect
-    stake_credential_is_valid && only_one_validator_input && updated_datum_correct && deadline_not_passed && ref_script_empty && no_side_has_deposited_asset && signed_transaction && output_address_valid
+    only_one_validator_input && updated_datum_correct && deadline_not_passed && ref_script_empty && no_side_has_deposited_asset && signed_transaction && output_address_valid
 
   let strike_is_used_as_collateral: Bool =
     datum.associated_forwards_datum.each_party_strike_collateral_asset_amount > 0
@@ -121,13 +114,13 @@ fn one_side_deposit_agreement(
 }
 
 fn both_sides_deposit_agreement(
-  datum: Option<CollateralDatum>,
+  maybe_datum: Option<CollateralDatum>,
   transaction: Transaction,
   deposit_party: Party,
   agreement_validator: ScriptHash,
   strike_stake_credential: StakeCredential,
 ) {
-  expect Some(datum) = datum
+  expect Some(datum) = maybe_datum
 
   if deposit_party == Issuer {
     expect datum.obligee_has_deposited_asset
@@ -149,16 +142,8 @@ fn both_sides_deposit_agreement(
 
   let expected_issuer_datum =
     AgreementDatum {
-      issuer_address_hash: datum.associated_forwards_datum.issuer_address_hash,
       utxo_owner_address_hash: datum.associated_forwards_datum.issuer_address_hash,
-      issuer_deposit_asset: datum.associated_forwards_datum.issuer_deposit_asset,
-      issuer_deposit_asset_amount: datum.associated_forwards_datum.issuer_deposit_asset_amount,
-      obligee_deposit_asset: datum.associated_forwards_datum.obligee_deposit_asset,
-      obligee_deposit_asset_amount: datum.associated_forwards_datum.obligee_deposit_asset_amount,
-      collateral_asset: datum.associated_forwards_datum.collateral_asset,
-      collateral_asset_amount: datum.associated_forwards_datum.each_party_collateral_asset_amount,
-      exercise_contract_date: datum.associated_forwards_datum.exercise_contract_date,
-      mint_asset: datum.associated_forwards_datum.mint_asset,
+      associated_forwards_datum: datum.associated_forwards_datum,
     }
 
   let expected_issuer_datum_as_data: Data = expected_issuer_datum
@@ -185,16 +170,8 @@ fn both_sides_deposit_agreement(
 
   let expected_obligee_datum =
     AgreementDatum {
-      issuer_address_hash: datum.associated_forwards_datum.issuer_address_hash,
       utxo_owner_address_hash: datum.obligee_address_hash,
-      issuer_deposit_asset: datum.associated_forwards_datum.issuer_deposit_asset,
-      issuer_deposit_asset_amount: datum.associated_forwards_datum.issuer_deposit_asset_amount,
-      obligee_deposit_asset: datum.associated_forwards_datum.obligee_deposit_asset,
-      obligee_deposit_asset_amount: datum.associated_forwards_datum.obligee_deposit_asset_amount,
-      collateral_asset: datum.associated_forwards_datum.collateral_asset,
-      collateral_asset_amount: datum.associated_forwards_datum.each_party_collateral_asset_amount,
-      exercise_contract_date: datum.associated_forwards_datum.exercise_contract_date,
-      mint_asset: datum.associated_forwards_datum.mint_asset,
+      associated_forwards_datum: datum.associated_forwards_datum,
     }
 
   expect InlineDatum(obligee_datum) = expected_obligee_utxo.datum
@@ -245,20 +222,17 @@ fn both_sides_deposit_agreement(
 }
 
 fn liquidate_collateral_valid(
-  datum: Option<CollateralDatum>,
+  maybe_datum: Option<CollateralDatum>,
   transaction: Transaction,
   liquidate_party: Party,
   burn_address: ScriptHash,
   strike_policy_id: PolicyId,
   strike_asset_name: AssetName,
-  output_index: Int,
 ) {
-  expect Some(datum) = datum
-  let party_address_hash: VerificationKeyHash =
-    get_address_hash_based_on_party(datum, liquidate_party)
+  expect Some(datum) = maybe_datum
 
-  let must_be_signed_by_owner =
-    list.has(transaction.extra_signatories, party_address_hash)
+  let must_be_signed_by_owner: Bool =
+    signed_by_party(transaction, liquidate_party, datum)
 
   let party_has_deposited_asset: Bool =
     get_party_has_deposited_asset(datum, liquidate_party)
@@ -287,13 +261,10 @@ fn liquidate_collateral_valid(
     datum.associated_forwards_datum.each_party_strike_collateral_asset_amount > 0
 
   if strike_is_used_as_collateral {
-    expect Some(output_to_burn_address) =
-      list.at(transaction.outputs, output_index)
+    let output_to_burn_address: List<Output> =
+      find_script_outputs(transaction.outputs, burn_address)
 
-    expect Script(output_to_liquidate_hash) =
-      output_to_burn_address.address.payment_credential
-
-    let output_is_to_burn_address = output_to_liquidate_hash == burn_address
+    expect Some(output_to_burn_address) = list.head(output_to_burn_address)
 
     let expected_strike_collateral_asset_burnt: Value =
       assets.from_lovelace(lovelace_of(output_to_burn_address.value))
@@ -310,23 +281,22 @@ fn liquidate_collateral_valid(
         >=,
       )
 
-    strike_collateral_asset_burnt && output_is_to_burn_address
+    strike_collateral_asset_burnt
   } else {
     True
   }
 }
 
 pub fn liquidate_both_parties_valid(
-  datum: Option<CollateralDatum>,
+  maybe_datum: Option<CollateralDatum>,
   transaction: Transaction,
   burn_address: ScriptHash,
   strike_policy_id: PolicyId,
   strike_asset_name: AssetName,
   strike_consume_address_hash: VerificationKeyHash,
   strike_consume_output_index: Int,
-  burn_output_index: Int,
 ) {
-  expect Some(datum) = datum
+  expect Some(datum) = maybe_datum
 
   let deadline_has_passed: Bool =
     datum.associated_forwards_datum.exercise_contract_date < get_lower_bound(
@@ -380,13 +350,10 @@ pub fn liquidate_both_parties_valid(
     deadline_has_passed && collateral_assets_sent && both_party_has_not_deposited_asset && valid_mint && only_one_validator_input && output_is_to_strike_consume_address
 
   if datum.associated_forwards_datum.each_party_strike_collateral_asset_amount > 0 {
-    expect Some(output_to_burn_address) =
-      list.at(transaction.outputs, burn_output_index)
+    let output_to_burn_address: List<Output> =
+      find_script_outputs(transaction.outputs, burn_address)
 
-    expect Script(output_to_liquidate_hash) =
-      output_to_burn_address.address.payment_credential
-
-    let output_is_to_burn_address = output_to_liquidate_hash == burn_address
+    expect Some(output_to_burn_address) = list.head(output_to_burn_address)
 
     let expected_strike_collateral_asset_burnt: Value =
       assets.from_lovelace(lovelace_of(output_to_burn_address.value))
@@ -403,7 +370,7 @@ pub fn liquidate_both_parties_valid(
         >=,
       )
 
-    strike_collateral_asset_burnt && output_is_to_burn_address
+    strike_collateral_asset_burnt
   } else {
     True
   }
@@ -432,7 +399,6 @@ validator collateral(
           my_output_reference,
           strike_policy_id,
           strike_asset_name,
-          strike_stake_credential,
           output_index,
         )
 
@@ -445,7 +411,7 @@ validator collateral(
           strike_stake_credential,
         )
 
-      LiquidateCollateral(liquidate_party, output_index) ->
+      LiquidateCollateral(liquidate_party) ->
         liquidate_collateral_valid(
           datum,
           self,
@@ -453,10 +419,9 @@ validator collateral(
           burn_address,
           strike_policy_id,
           strike_asset_name,
-          output_index,
         )
 
-      LiquidateBothParties(strike_consume_output_index, burn_output_index) ->
+      LiquidateBothParties(strike_consume_output_index) ->
         liquidate_both_parties_valid(
           datum,
           self,
@@ -465,7 +430,6 @@ validator collateral(
           strike_asset_name,
           strike_consume_address_hash,
           strike_consume_output_index,
-          burn_output_index,
         )
     }
   }

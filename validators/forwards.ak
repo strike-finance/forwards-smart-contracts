@@ -15,7 +15,7 @@ use utils.{
 }
 
 fn accept_forwards_contract_valid(
-  datum: Option<ForwardsDatum>,
+  maybe_datum: Option<ForwardsDatum>,
   transaction: Transaction,
   collateral_validator: ByteArray,
   obligee_info: ObligeeInfo,
@@ -24,7 +24,7 @@ fn accept_forwards_contract_valid(
   strike_stake_credential: StakeCredential,
   output_index: Int,
 ) {
-  expect Some(datum) = datum
+  expect Some(datum) = maybe_datum
 
   let all_inputs_from_script = get_validators_inputs(transaction)
   let only_one_validator_input: Bool = list.length(all_inputs_from_script) == 1
@@ -43,18 +43,7 @@ fn accept_forwards_contract_valid(
       issuer_has_deposited_asset: False,
       obligee_address_hash: obligee_info.obligee_address_hash,
       obligee_has_deposited_asset: False,
-      associated_forwards_datum: ForwardsDatum {
-        issuer_address_hash: datum.issuer_address_hash,
-        issuer_deposit_asset: datum.issuer_deposit_asset,
-        issuer_deposit_asset_amount: datum.issuer_deposit_asset_amount,
-        obligee_deposit_asset: datum.obligee_deposit_asset,
-        obligee_deposit_asset_amount: datum.obligee_deposit_asset_amount,
-        collateral_asset: datum.collateral_asset,
-        each_party_collateral_asset_amount: datum.each_party_collateral_asset_amount,
-        each_party_strike_collateral_asset_amount: datum.each_party_strike_collateral_asset_amount,
-        exercise_contract_date: datum.exercise_contract_date,
-        mint_asset: datum.mint_asset,
-      },
+      associated_forwards_datum: datum,
     }
 
   let datum_as_data: Data = expected_collateral_datum
@@ -121,11 +110,11 @@ fn accept_forwards_contract_valid(
 
 // asset is burnt and signed by issuer
 fn cancel_forwards_contract_valid(
-  datum: Option<ForwardsDatum>,
+  maybe_datum: Option<ForwardsDatum>,
   transaction: Transaction,
   asset_name: ByteArray,
 ) {
-  expect Some(datum) = datum
+  expect Some(datum) = maybe_datum
 
   let all_validators_inputs = get_validators_inputs(transaction)
   let only_one_validator_input = list.length(all_validators_inputs) == 1
@@ -252,11 +241,7 @@ fn single_burn_valid(
   policy_id: PolicyId,
   asset_name: ByteArray,
 ) -> Bool {
-  let expected_mint = (policy_id, asset_name, -1)
-
-  let valid_mint = validate_token_mint(transaction.mint, expected_mint)
-
-  valid_mint
+  burn_valid(transaction, policy_id, asset_name, -1)
 }
 
 fn liquidate_burn_valid(
@@ -264,7 +249,16 @@ fn liquidate_burn_valid(
   policy_id: PolicyId,
   asset_name: ByteArray,
 ) -> Bool {
-  let expected_mint = (policy_id, asset_name, -2)
+  burn_valid(transaction, policy_id, asset_name, -2)
+}
+
+fn burn_valid(
+  transaction: Transaction,
+  policy_id: PolicyId,
+  asset_name: ByteArray,
+  amount: Int,
+) -> Bool {
+  let expected_mint = (policy_id, asset_name, amount)
 
   let valid_mint = validate_token_mint(transaction.mint, expected_mint)
 
