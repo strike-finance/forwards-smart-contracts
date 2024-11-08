@@ -19,7 +19,7 @@ validator agreement(
 
     expect Some(datum) = maybe_datum
 
-    let ForwardsDatum { mint_asset_policy_id, exercise_contract_date, .. } =
+    let ForwardsDatum { mint_asset, exercise_contract_date, .. } =
       datum.associated_forwards_datum
 
     let AgreementDatum { utxo_owner_address_hash, .. } = datum
@@ -28,7 +28,7 @@ validator agreement(
       list.has(extra_signatories, utxo_owner_address_hash)
 
     let expected_mint_value =
-      [(mint_asset_policy_id, utxo_owner_address_hash, -1)]
+      [(mint_asset.policy_id, mint_asset.asset_name, -1)]
 
     let valid_mint: Bool = expected_mint_value == assets.flatten(mint)
 

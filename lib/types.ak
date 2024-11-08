@@ -19,7 +19,7 @@ pub type ForwardsDatum {
   each_party_collateral_asset_amount: Int,
   each_party_strike_collateral_asset_amount: Int,
   exercise_contract_date: POSIXTime,
-  mint_asset_policy_id: PolicyId,
+  mint_asset: AssetClass,
 }
 
 pub type CollateralDatum {
