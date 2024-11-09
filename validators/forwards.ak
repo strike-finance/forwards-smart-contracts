@@ -321,7 +321,7 @@ fn burn_valid(
 ) -> Bool {
   let Transaction { mint, .. } = transaction
 
-  let mint_asset = [(policy_id, asset_name, burnt_amount)]
+  let mint_asset = [(policy_id, asset_name, -burnt_amount)]
   let valid_mint = mint_asset == flatten(mint)
 
   valid_mint
