@@ -3,10 +3,7 @@ use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Script}
 use cardano/assets.{AssetName, PolicyId, Value, flatten, match}
 use cardano/transaction.{InlineDatum, Output, Transaction}
-use constants.{
-  min_lovelace_amount, strike_asset_name, strike_policy_id,
-  strike_stake_credential,
-}
+use constants.{strike_asset_name, strike_policy_id, strike_stake_credential}
 use types.{
   AcceptForwardsContract, CancelForwardsContract, CollateralDatum,
   CreateForwardMint, EnterForwardMint, ForwardsDatum, ForwardsRedeemer,
@@ -103,12 +100,11 @@ fn accept_forwards_contract_valid(
   let expected_collateral_datum_match: Bool = output_datum == datum_as_data
 
   let expected_assets_locked: Value =
-    assets.from_lovelace(min_lovelace_amount)
-      |> assets.add(
-          collateral_asset.policy_id,
-          collateral_asset.asset_name,
-          each_party_collateral_asset_amount * 2,
-        )
+    assets.from_asset(
+      collateral_asset.policy_id,
+      collateral_asset.asset_name,
+      each_party_collateral_asset_amount * 2,
+    )
       |> assets.add(mint_asset.policy_id, mint_asset.asset_name, 2)
 
   expect Some(output_to_collateral_stake_credential) =
@@ -219,12 +215,11 @@ fn create_forward_mint_valid(
   let valid_mint: Bool = expected_mint == flatten(mint)
 
   let expected_assets_locked: Value =
-    assets.from_lovelace(min_lovelace_amount)
-      |> assets.add(
-          collateral_asset.policy_id,
-          collateral_asset.asset_name,
-          each_party_collateral_asset_amount,
-        )
+    assets.from_asset(
+      collateral_asset.policy_id,
+      collateral_asset.asset_name,
+      each_party_collateral_asset_amount,
+    )
       |> assets.add(policy_id, asset_name, 1)
 
   let ref_script_empty = reference_script == None
@@ -286,8 +281,6 @@ fn enter_forward_mint_valid(
   let only_one_validator_input: Bool = list.length(all_inputs_from_script) == 1
 
   expect Some(input) = list.at(all_inputs_from_script, input_index)
-
-  trace input
 
   let input_is_from_forward_validator: Bool =
     get_script_hash(input.output.address) == policy_id

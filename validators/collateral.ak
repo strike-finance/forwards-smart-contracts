@@ -6,8 +6,8 @@ use cardano/transaction.{
   InlineDatum, Output, OutputReference, Transaction, find_script_outputs,
 }
 use constants.{
-  burn_address, min_lovelace_amount, strike_asset_name,
-  strike_consume_address_hash, strike_policy_id, strike_stake_credential,
+  burn_address, strike_asset_name, strike_consume_address_hash, strike_policy_id,
+  strike_stake_credential,
 }
 use types.{
   AgreementDatum, AssetClass, BothSidesDepositAgreement, CollateralDatum,
@@ -77,6 +77,7 @@ fn one_side_deposit_agreement_valid(
     issuer_deposit_asset_amount,
     obligee_deposit_asset,
     obligee_deposit_asset_amount,
+    each_party_collateral_asset_amount,
     each_party_strike_collateral_asset_amount,
     ..
   } = datum.associated_forwards_datum
@@ -113,12 +114,11 @@ fn one_side_deposit_agreement_valid(
     )
 
   let expected_assets_locked: Value =
-    assets.from_lovelace(lovelace_of(input_from_validator.output.value))
-      |> assets.add(
-          collateral_asset.policy_id,
-          collateral_asset.asset_name,
-          expected_asset_amount_locked,
-        )
+    assets.from_asset(
+      collateral_asset.policy_id,
+      collateral_asset.asset_name,
+      each_party_collateral_asset_amount,
+    )
       |> assets.add(mint_asset.policy_id, mint_asset.asset_name, 2)
       |> assets.add(
           expected_asset_locked.policy_id,
@@ -146,7 +146,7 @@ fn one_side_deposit_agreement_valid(
         |> assets.add(
             strike_policy_id,
             strike_asset_name,
-            each_party_strike_collateral_asset_amount * 2,
+            each_party_strike_collateral_asset_amount,
           )
 
     let assets_match =
@@ -218,13 +218,11 @@ fn both_sides_deposit_agreement_valid(
   let issuer_datum_match: Bool = expected_issuer_datum_as_data == issuer_datum
 
   let expected_issuer_assets_locked: Value =
-    assets.from_lovelace(min_lovelace_amount)
-      |> assets.add(mint_asset.policy_id, mint_asset.asset_name, 1)
-      |> assets.add(
-          obligee_deposit_asset.policy_id,
-          obligee_deposit_asset.asset_name,
-          obligee_deposit_asset_amount,
-        )
+    assets.from_asset(
+      obligee_deposit_asset.policy_id,
+      obligee_deposit_asset.asset_name,
+      obligee_deposit_asset_amount,
+    )
 
   let expected_issuer_assets_locked_match: Bool =
     match(expected_issuer_utxo.value, expected_issuer_assets_locked, >=)
@@ -243,8 +241,7 @@ fn both_sides_deposit_agreement_valid(
     expected_obligee_datum_as_data == obligee_datum
 
   let expected_obligee_assets_locked: Value =
-    assets.from_lovelace(min_lovelace_amount)
-      |> assets.add(mint_asset.policy_id, mint_asset.asset_name, 1)
+    assets.from_asset(mint_asset.policy_id, mint_asset.asset_name, 1)
       |> assets.add(
           issuer_deposit_asset.policy_id,
           issuer_deposit_asset.asset_name,

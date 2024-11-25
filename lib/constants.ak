@@ -2,8 +2,6 @@ use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Credential, Inline, StakeCredential, VerificationKey}
 use cardano/assets.{AssetName, PolicyId}
 
-pub const min_lovelace_amount: Int = 2_000_000
-
 // all random temp value
 pub const burn_address: ScriptHash =
   #"3d960f7ce468aa238665abd8327f2916926f33350b45b2b1dbac3c03"
