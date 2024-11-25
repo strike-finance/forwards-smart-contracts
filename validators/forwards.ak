@@ -40,11 +40,11 @@ validator forwards(collateral_validator: ByteArray, asset_name: AssetName) {
     when rdmr is {
       CreateForwardMint(output_index) ->
         create_forward_mint_valid(transaction, policy_id, output_index)
-      EnterForwardMint(output_index) ->
+      EnterForwardMint(input_index) ->
         enter_forward_mint_valid(
           transaction,
           policy_id,
-          output_index,
+          input_index,
           asset_name,
         )
       SingleBurn -> single_burn_valid(transaction, policy_id, asset_name)
@@ -143,7 +143,6 @@ fn accept_forwards_contract_valid(
         expected_asset_locked_with_strike,
         >=,
       )
-
     assets_match
   } else {
     let assets_match: Bool =
@@ -277,7 +276,7 @@ fn create_forward_mint_valid(
 fn enter_forward_mint_valid(
   transaction: Transaction,
   policy_id: PolicyId,
-  output_index: Int,
+  input_index: Int,
   asset_name: AssetName,
 ) -> Bool {
   let Transaction { mint, .. } = transaction
@@ -286,7 +285,9 @@ fn enter_forward_mint_valid(
 
   let only_one_validator_input: Bool = list.length(all_inputs_from_script) == 1
 
-  expect Some(input) = list.at(all_inputs_from_script, output_index)
+  expect Some(input) = list.at(all_inputs_from_script, input_index)
+
+  trace input
 
   let input_is_from_forward_validator: Bool =
     get_script_hash(input.output.address) == policy_id
@@ -294,7 +295,7 @@ fn enter_forward_mint_valid(
   let expected_mint = [(policy_id, asset_name, 1)]
   let valid_mint = expected_mint == flatten(mint)
 
-  valid_mint && only_one_validator_input && input_is_from_forward_validator
+  only_one_validator_input && input_is_from_forward_validator && valid_mint
 }
 
 fn single_burn_valid(
