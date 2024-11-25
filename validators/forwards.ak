@@ -40,12 +40,12 @@ validator forwards(collateral_validator: ByteArray, asset_name: AssetName) {
     when rdmr is {
       CreateForwardMint(output_index) ->
         create_forward_mint_valid(transaction, policy_id, output_index)
-      EnterForwardMint(obligee_address_hash, output_index) ->
+      EnterForwardMint(output_index) ->
         enter_forward_mint_valid(
           transaction,
           policy_id,
           output_index,
-          obligee_address_hash,
+          asset_name,
         )
       SingleBurn -> single_burn_valid(transaction, policy_id, asset_name)
       LiquidateBurn -> liquidate_burn_valid(transaction, policy_id, asset_name)
@@ -278,7 +278,7 @@ fn enter_forward_mint_valid(
   transaction: Transaction,
   policy_id: PolicyId,
   output_index: Int,
-  obligee_address_hash: VerificationKeyHash,
+  asset_name: AssetName,
 ) -> Bool {
   let Transaction { mint, .. } = transaction
 
@@ -291,7 +291,7 @@ fn enter_forward_mint_valid(
   let input_is_from_forward_validator: Bool =
     get_script_hash(input.output.address) == policy_id
 
-  let expected_mint = [(policy_id, obligee_address_hash, 1)]
+  let expected_mint = [(policy_id, asset_name, 1)]
   let valid_mint = expected_mint == flatten(mint)
 
   valid_mint && only_one_validator_input && input_is_from_forward_validator
