@@ -218,11 +218,12 @@ fn both_sides_deposit_agreement_valid(
   let issuer_datum_match: Bool = expected_issuer_datum_as_data == issuer_datum
 
   let expected_issuer_assets_locked: Value =
-    assets.from_asset(
-      obligee_deposit_asset.policy_id,
-      obligee_deposit_asset.asset_name,
-      obligee_deposit_asset_amount,
-    )
+    assets.from_asset(mint_asset.policy_id, mint_asset.asset_name, 1)
+      |> assets.add(
+          obligee_deposit_asset.policy_id,
+          obligee_deposit_asset.asset_name,
+          obligee_deposit_asset_amount,
+        )
 
   let expected_issuer_assets_locked_match: Bool =
     match(expected_issuer_utxo.value, expected_issuer_assets_locked, >=)
