@@ -134,11 +134,11 @@ fn one_side_deposit_agreement_valid(
   let signed_transaction: Bool =
     signed_by_party(transaction, deposit_party, datum)
 
-  expect
-    only_one_validator_input && updated_datum_correct && deadline_not_passed && ref_script_empty && no_side_has_deposited_asset && signed_transaction && output_address_valid
-
   let strike_is_used_as_collateral: Bool =
     each_party_strike_collateral_asset_amount > 0
+
+  expect
+    only_one_validator_input && updated_datum_correct && deadline_not_passed && ref_script_empty && no_side_has_deposited_asset && signed_transaction && output_address_valid
 
   if strike_is_used_as_collateral {
     let expected_assets_locked_with_strike: Value =
@@ -146,7 +146,7 @@ fn one_side_deposit_agreement_valid(
         |> assets.add(
             strike_policy_id,
             strike_asset_name,
-            each_party_strike_collateral_asset_amount,
+            each_party_strike_collateral_asset_amount * 2,
           )
 
     let assets_match =
