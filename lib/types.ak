@@ -53,7 +53,8 @@ pub type ForwardsRedeemer {
 
 pub type MintRedeemer {
   CreateForwardMint(Int)
-  EnterForwardMint(Int)
-  SingleBurn
-  LiquidateBurn
+  EnterForwardMint(VerificationKeyHash, Int)
+  CancelForwardBurn(VerificationKeyHash)
+  LiquidateBurn(VerificationKeyHash, VerificationKeyHash)
+  ConsumeAgreementBurn(VerificationKeyHash)
 }
