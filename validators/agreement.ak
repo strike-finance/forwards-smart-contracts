@@ -1,10 +1,13 @@
 use aiken/collection/list
-use cardano/assets
+use cardano/assets.{AssetName, PolicyId}
 use cardano/transaction.{Transaction}
 use types.{AgreementDatum, ForwardsDatum}
 use utils.{get_lower_bound, get_validators_inputs}
 
-validator agreement {
+validator agreement(
+  _underlying_asset_policy_id: PolicyId,
+  _underlying_asset_name: AssetName,
+) {
   spend(
     maybe_datum: Option<AgreementDatum>,
     _redeemer: Int,
