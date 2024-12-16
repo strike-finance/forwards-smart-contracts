@@ -1,7 +1,7 @@
 use aiken/collection/list
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Script}
-use cardano/assets.{AssetName, PolicyId, Value, flatten, match}
+use cardano/assets.{PolicyId, Value, flatten, match}
 use cardano/transaction.{InlineDatum, Output, Transaction}
 use constants.{asset_name, strike_stake_credential}
 use types.{
