@@ -3,7 +3,7 @@ use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Script}
 use cardano/assets.{AssetName, PolicyId, Value, flatten, match}
 use cardano/transaction.{InlineDatum, Output, Transaction}
-use constants.{strike_stake_credential}
+use constants.{asset_name, strike_stake_credential}
 use types.{
   AcceptForwardsContract, CancelForwardBurn, CancelForwardsContract,
   CollateralDatum, ConsumeAgreementBurn, CreateForwardMint, EnterForwardMint,
@@ -11,7 +11,7 @@ use types.{
 }
 use utils.{get_script_hash, get_upper_bound, get_validators_inputs}
 
-validator forwards(collateral_validator: ByteArray, asset_name: AssetName) {
+validator forwards(collateral_validator: ByteArray) {
   spend(
     datum: Option<ForwardsDatum>,
     redeemer: ForwardsRedeemer,
@@ -43,15 +43,9 @@ validator forwards(collateral_validator: ByteArray, asset_name: AssetName) {
           policy_id,
           input_index,
           obligee_address_hash,
-          asset_name,
         )
       CancelForwardBurn(issuer_address_hash) ->
-        cancel_forward_burn_valid(
-          transaction,
-          policy_id,
-          issuer_address_hash,
-          asset_name,
-        )
+        cancel_forward_burn_valid(transaction, policy_id, issuer_address_hash)
       LiquidateBurn(issuer_address_hash, obligee_address_hash) ->
         liquidate_burn_valid(
           transaction,
@@ -84,7 +78,7 @@ fn accept_forwards_contract_valid(
     collateral_asset,
     each_party_collateral_asset_amount,
     exercise_contract_date,
-    mint_asset,
+    mint_asset_policy_id,
     issuer_address_hash,
     ..
   } = datum
@@ -120,8 +114,8 @@ fn accept_forwards_contract_valid(
       collateral_asset.asset_name,
       each_party_collateral_asset_amount * 2,
     )
-      |> assets.add(mint_asset.policy_id, obligee_address_hash, 1)
-      |> assets.add(mint_asset.policy_id, issuer_address_hash, 1)
+      |> assets.add(mint_asset_policy_id, obligee_address_hash, 1)
+      |> assets.add(mint_asset_policy_id, issuer_address_hash, 1)
 
   expect Some(output_to_collateral_stake_credential) =
     output_to_collateral_utxo.address.stake_credential
@@ -139,8 +133,8 @@ fn accept_forwards_contract_valid(
 
   let expected_mint =
     [
-      (mint_asset.policy_id, mint_asset.asset_name, -1),
-      (mint_asset.policy_id, obligee_address_hash, 1),
+      (mint_asset_policy_id, asset_name, -1),
+      (mint_asset_policy_id, obligee_address_hash, 1),
     ]
 
   let mint_valid: Bool = expected_mint == flatten(mint)
@@ -156,7 +150,7 @@ fn cancel_forwards_contract_valid(
 
   let Transaction { extra_signatories, mint, .. } = transaction
 
-  let ForwardsDatum { issuer_address_hash, mint_asset, .. } = datum
+  let ForwardsDatum { issuer_address_hash, mint_asset_policy_id, .. } = datum
 
   let only_one_validator_input =
     list.length(get_validators_inputs(transaction)) == 1
@@ -166,8 +160,8 @@ fn cancel_forwards_contract_valid(
 
   let expected_mint =
     [
-      (mint_asset.policy_id, mint_asset.asset_name, -1),
-      (mint_asset.policy_id, issuer_address_hash, -1),
+      (mint_asset_policy_id, asset_name, -1),
+      (mint_asset_policy_id, issuer_address_hash, -1),
     ]
   let valid_mint = expected_mint == flatten(mint)
   must_be_signed_by_issuer && valid_mint && only_one_validator_input
@@ -197,7 +191,7 @@ fn create_forward_mint_valid(
     obligee_deposit_asset,
     issuer_deposit_asset_amount,
     obligee_deposit_asset_amount,
-    mint_asset,
+    mint_asset_policy_id,
     issuer_address_hash,
   } = output_datum_typed
 
@@ -238,8 +232,7 @@ fn create_forward_mint_valid(
 
   let obligee_asset_positive: Bool = obligee_deposit_asset_amount > 0
 
-  let mint_asset_valid =
-    mint_asset.policy_id == policy_id && mint_asset.asset_name == asset_name
+  let mint_asset_valid = mint_asset_policy_id == policy_id
 
   let assets_match =
     match(output_to_forward_contract_value, expected_assets_locked, >=)
@@ -252,7 +245,6 @@ fn enter_forward_mint_valid(
   policy_id: PolicyId,
   input_index: Int,
   obligee_address_hash: VerificationKeyHash,
-  asset_name: AssetName,
 ) -> Bool {
   let Transaction { mint, .. } = transaction
 
@@ -276,7 +268,6 @@ fn cancel_forward_burn_valid(
   transaction: Transaction,
   policy_id: PolicyId,
   issuer_address_hash: VerificationKeyHash,
-  asset_name: AssetName,
 ) -> Bool {
   let issuer_burnt = burn_valid(transaction, policy_id, issuer_address_hash, 1)
   let asset_burnt = burn_valid(transaction, policy_id, asset_name, 1)

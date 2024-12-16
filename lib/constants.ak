@@ -1,5 +1,6 @@
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Credential, Inline, StakeCredential, VerificationKey}
+use cardano/assets.{AssetName}
 
 // all random temp value
 pub const burn_address: ScriptHash =
@@ -14,3 +15,5 @@ pub const strike_stake_credential: StakeCredential = stake_key
 
 pub const strike_consume_address_hash: VerificationKeyHash =
   #"d48838fee1e840857dab28a04dd88193aec8c297b85d8150c0a1f5cc"
+
+pub const asset_name: AssetName = #"535452494b45"
