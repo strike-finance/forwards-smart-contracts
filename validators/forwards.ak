@@ -167,7 +167,7 @@ fn cancel_forwards_contract_valid(
   let expected_mint =
     [
       (mint_asset.policy_id, mint_asset.asset_name, -1),
-      (mint_asset.policy_id, issuer_address_hash, 1),
+      (mint_asset.policy_id, issuer_address_hash, -1),
     ]
   let valid_mint = expected_mint == flatten(mint)
   must_be_signed_by_issuer && valid_mint && only_one_validator_input
