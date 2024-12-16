@@ -269,10 +269,10 @@ fn cancel_forward_burn_valid(
   policy_id: PolicyId,
   issuer_address_hash: VerificationKeyHash,
 ) -> Bool {
-  let issuer_burnt = burn_valid(transaction, policy_id, issuer_address_hash, 1)
-  let asset_burnt = burn_valid(transaction, policy_id, asset_name, 1)
+  let expected_burnt =
+    [(policy_id, asset_name, -1), (policy_id, issuer_address_hash, -1)]
 
-  issuer_burnt && asset_burnt
+  expected_burnt == flatten(transaction.mint)
 }
 
 fn liquidate_burn_valid(
@@ -281,11 +281,13 @@ fn liquidate_burn_valid(
   issuer_address_hash: VerificationKeyHash,
   obligee_address_hash: VerificationKeyHash,
 ) -> Bool {
-  let issuer_burnt = burn_valid(transaction, policy_id, issuer_address_hash, 1)
-  let obligee_burnt =
-    burn_valid(transaction, policy_id, obligee_address_hash, 1)
+  let expected_burnt =
+    [
+      (policy_id, issuer_address_hash, -1),
+      (policy_id, obligee_address_hash, -1),
+    ]
 
-  issuer_burnt && obligee_burnt
+  expected_burnt == flatten(transaction.mint)
 }
 
 fn consume_agreement_burn_valid(
@@ -293,19 +295,7 @@ fn consume_agreement_burn_valid(
   policy_id: PolicyId,
   address_hash: VerificationKeyHash,
 ) -> Bool {
-  burn_valid(transaction, policy_id, address_hash, 1)
-}
+  let expected_burnt = [(policy_id, address_hash, -1)]
 
-fn burn_valid(
-  transaction: Transaction,
-  policy_id: PolicyId,
-  asset_name: AssetName,
-  burnt_amount: Int,
-) -> Bool {
-  let Transaction { mint, .. } = transaction
-
-  let mint_asset = [(policy_id, asset_name, -burnt_amount)]
-  let valid_mint = mint_asset == flatten(mint)
-
-  valid_mint
+  expected_burnt == flatten(transaction.mint)
 }
