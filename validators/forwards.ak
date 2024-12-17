@@ -3,7 +3,9 @@ use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Script}
 use cardano/assets.{PolicyId, Value, flatten, match}
 use cardano/transaction.{InlineDatum, Output, Transaction}
-use constants.{asset_name, strike_stake_credential}
+use constants.{
+  asset_name, strike_asset_name, strike_policy_id, strike_stake_credential,
+}
 use types.{
   AcceptForwardsContract, CancelForwardBurn, CancelForwardsContract,
   CollateralDatum, ConsumeAgreementBurn, CreateForwardMint, EnterForwardMint,
@@ -80,6 +82,7 @@ fn accept_forwards_contract_valid(
     exercise_contract_date,
     mint_asset_policy_id,
     issuer_address_hash,
+    each_party_strike_collateral_asset_amount,
     ..
   } = datum
 
@@ -128,9 +131,6 @@ fn accept_forwards_contract_valid(
 
   let ref_script_empty = output_to_collateral_utxo.reference_script == None
 
-  let assets_match: Bool =
-    match(output_to_collateral_utxo.value, expected_assets_locked, >=)
-
   let expected_mint =
     [
       (mint_asset_policy_id, asset_name, -1),
@@ -139,7 +139,32 @@ fn accept_forwards_contract_valid(
 
   let mint_valid: Bool = expected_mint == flatten(mint)
 
-  assets_match && only_one_validator_input && stake_credential_is_valid && deadline_not_passed && ref_script_empty && expected_collateral_datum_match && output_is_to_collateral_validator && mint_valid
+  expect
+    only_one_validator_input && stake_credential_is_valid && deadline_not_passed && ref_script_empty && expected_collateral_datum_match && output_is_to_collateral_validator && mint_valid
+
+  if each_party_strike_collateral_asset_amount > 0 {
+    let expected_asset_locked_with_strike: Value =
+      expected_assets_locked
+        |> assets.add(
+            strike_policy_id,
+            strike_asset_name,
+            each_party_strike_collateral_asset_amount * 2,
+          )
+
+    let assets_match: Bool =
+      match(
+        output_to_collateral_utxo.value,
+        expected_asset_locked_with_strike,
+        >=,
+      )
+
+    assets_match
+  } else {
+    let assets_match: Bool =
+      match(output_to_collateral_utxo.value, expected_assets_locked, >=)
+
+    assets_match
+  }
 }
 
 fn cancel_forwards_contract_valid(
@@ -193,6 +218,7 @@ fn create_forward_mint_valid(
     obligee_deposit_asset_amount,
     mint_asset_policy_id,
     issuer_address_hash,
+    each_party_strike_collateral_asset_amount,
   } = output_datum_typed
 
   let output_script_hash: ScriptHash =
@@ -234,10 +260,32 @@ fn create_forward_mint_valid(
 
   let mint_asset_valid = mint_asset_policy_id == policy_id
 
-  let assets_match =
-    match(output_to_forward_contract_value, expected_assets_locked, >=)
+  expect
+    valid_mint && output_is_to_forward_validator && stake_credential_is_valid && ref_script_empty && deadline_not_passed && issuer_and_obligee_asset_different && issuer_asset_positive && obligee_asset_positive && mint_asset_valid
 
-  assets_match && valid_mint && output_is_to_forward_validator && stake_credential_is_valid && ref_script_empty && deadline_not_passed && issuer_and_obligee_asset_different && issuer_asset_positive && obligee_asset_positive && mint_asset_valid
+  if each_party_strike_collateral_asset_amount > 0 {
+    let expected_assets_locked_with_strike: Value =
+      expected_assets_locked
+        |> assets.add(
+            strike_policy_id,
+            strike_asset_name,
+            output_datum_typed.each_party_strike_collateral_asset_amount,
+          )
+
+    let assets_match =
+      match(
+        output_to_forward_contract_value,
+        expected_assets_locked_with_strike,
+        >=,
+      )
+
+    assets_match
+  } else {
+    let assets_match =
+      match(output_to_forward_contract_value, expected_assets_locked, >=)
+
+    assets_match
+  }
 }
 
 fn enter_forward_mint_valid(

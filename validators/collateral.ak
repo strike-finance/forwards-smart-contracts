@@ -1,11 +1,14 @@
 use aiken/collection/list
 use aiken/crypto.{ScriptHash}
-use cardano/address.{from_verification_key}
+use cardano/address.{Script, from_verification_key}
 use cardano/assets.{Value, flatten, lovelace_of, match}
 use cardano/transaction.{
   InlineDatum, Output, OutputReference, Transaction, find_script_outputs,
 }
-use constants.{strike_consume_address_hash, strike_stake_credential}
+use constants.{
+  burn_address, strike_asset_name, strike_consume_address_hash, strike_policy_id,
+  strike_stake_credential,
+}
 use types.{
   AgreementDatum, AssetClass, BothSidesDepositAgreement, CollateralDatum,
   CollateralRedeemerAction, ForwardsDatum, Issuer, LiquidateBothParties,
@@ -78,6 +81,7 @@ fn one_side_deposit_agreement_valid(
     obligee_deposit_asset_amount,
     each_party_collateral_asset_amount,
     issuer_address_hash,
+    each_party_strike_collateral_asset_amount,
   } = datum.associated_forwards_datum
 
   expect Some(input_from_validator) =
@@ -133,10 +137,30 @@ fn one_side_deposit_agreement_valid(
   let signed_transaction: Bool =
     signed_by_party(transaction, deposit_party, datum)
 
-  let assets_match =
-    match(output_to_validator.value, expected_assets_locked, >=)
+  let strike_is_used_as_collateral: Bool =
+    each_party_strike_collateral_asset_amount > 0
 
-  assets_match && only_one_validator_input && updated_datum_correct && deadline_not_passed && ref_script_empty && no_side_has_deposited_asset && signed_transaction && output_address_valid
+  expect
+    only_one_validator_input && updated_datum_correct && deadline_not_passed && ref_script_empty && no_side_has_deposited_asset && signed_transaction && output_address_valid
+
+  if strike_is_used_as_collateral {
+    let expected_assets_locked_with_strike: Value =
+      expected_assets_locked
+        |> assets.add(
+            strike_policy_id,
+            strike_asset_name,
+            each_party_strike_collateral_asset_amount,
+          )
+    let assets_match =
+      match(output_to_validator.value, expected_assets_locked_with_strike, >=)
+
+    assets_match
+  } else {
+    let assets_match =
+      match(output_to_validator.value, expected_assets_locked, >=)
+
+    assets_match
+  }
 }
 
 fn both_sides_deposit_agreement_valid(
@@ -257,7 +281,7 @@ fn liquidate_collateral_valid(
   transaction: Transaction,
   liquidate_party: Party,
 ) {
-  let Transaction { mint, validity_range, .. } = transaction
+  let Transaction { mint, outputs, validity_range, .. } = transaction
 
   expect Some(datum) = maybe_datum
 
@@ -267,6 +291,7 @@ fn liquidate_collateral_valid(
     exercise_contract_date,
     mint_asset_policy_id,
     issuer_address_hash,
+    each_party_strike_collateral_asset_amount,
     ..
   } = datum.associated_forwards_datum
 
@@ -290,7 +315,39 @@ fn liquidate_collateral_valid(
   let only_one_validator_input =
     list.length(get_validators_inputs(transaction)) == 1
 
-  deadline_has_passed && party_has_deposited_asset && valid_mint && signed_transaction && only_one_validator_input
+  expect
+    deadline_has_passed && party_has_deposited_asset && valid_mint && signed_transaction && only_one_validator_input
+
+  if each_party_strike_collateral_asset_amount > 0 {
+    expect Some(output_to_burn_address) =
+      list.find(
+        outputs,
+        fn(output) {
+          expect Script(output_to_liquidate_hash) =
+            output.address.payment_credential
+          output_to_liquidate_hash == burn_address
+        },
+      )
+
+    let expected_strike_collateral_asset_burnt: Value =
+      assets.from_lovelace(lovelace_of(output_to_burn_address.value))
+        |> assets.add(
+            strike_policy_id,
+            strike_asset_name,
+            each_party_strike_collateral_asset_amount,
+          )
+
+    let strike_collateral_asset_burnt: Bool =
+      match(
+        output_to_burn_address.value,
+        expected_strike_collateral_asset_burnt,
+        >=,
+      )
+
+    strike_collateral_asset_burnt
+  } else {
+    True
+  }
 }
 
 pub fn liquidate_both_parties_valid(
@@ -310,6 +367,7 @@ pub fn liquidate_both_parties_valid(
     mint_asset_policy_id,
     each_party_collateral_asset_amount,
     issuer_address_hash,
+    each_party_strike_collateral_asset_amount,
     ..
   } = datum.associated_forwards_datum
 
@@ -358,5 +416,36 @@ pub fn liquidate_both_parties_valid(
   let only_one_validator_input: Bool =
     list.length(get_validators_inputs(transaction)) == 1
 
-  deadline_has_passed && collateral_assets_sent && both_party_has_not_deposited_asset && valid_mint && only_one_validator_input && output_is_to_strike_consume_address
+  expect
+    deadline_has_passed && collateral_assets_sent && both_party_has_not_deposited_asset && valid_mint && only_one_validator_input && output_is_to_strike_consume_address
+  if each_party_strike_collateral_asset_amount > 0 {
+    expect Some(output_to_burn_address) =
+      list.find(
+        outputs,
+        fn(output) {
+          expect Script(output_to_liquidate_hash) =
+            output.address.payment_credential
+          output_to_liquidate_hash == burn_address
+        },
+      )
+
+    let expected_strike_collateral_asset_burnt: Value =
+      assets.from_lovelace(lovelace_of(output_to_burn_address.value))
+        |> assets.add(
+            strike_policy_id,
+            strike_asset_name,
+            each_party_strike_collateral_asset_amount * 2,
+          )
+
+    let strike_collateral_asset_burnt: Bool =
+      match(
+        output_to_burn_address.value,
+        expected_strike_collateral_asset_burnt,
+        >=,
+      )
+
+    strike_collateral_asset_burnt
+  } else {
+    True
+  }
 }
