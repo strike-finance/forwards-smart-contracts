@@ -1,7 +1,7 @@
 use aiken/collection/list
 use aiken/crypto.{ScriptHash}
 use cardano/address.{Script, from_verification_key}
-use cardano/assets.{Value, flatten, lovelace_of, match}
+use cardano/assets.{flatten, quantity_of}
 use cardano/transaction.{
   InlineDatum, Output, OutputReference, Transaction, find_script_outputs,
 }
@@ -115,20 +115,6 @@ fn one_side_deposit_agreement_valid(
       obligee_deposit_asset_amount,
     )
 
-  let expected_assets_locked: Value =
-    assets.from_asset(
-      collateral_asset.policy_id,
-      collateral_asset.asset_name,
-      each_party_collateral_asset_amount,
-    )
-      |> assets.add(mint_asset_policy_id, obligee_address_hash, 1)
-      |> assets.add(mint_asset_policy_id, issuer_address_hash, 1)
-      |> assets.add(
-          expected_asset_locked.policy_id,
-          expected_asset_locked.asset_name,
-          expected_asset_amount_locked,
-        )
-
   let ref_script_empty = output_to_validator.reference_script == None
 
   let no_side_has_deposited_asset: Bool =
@@ -143,23 +129,38 @@ fn one_side_deposit_agreement_valid(
   expect
     only_one_validator_input && updated_datum_correct && deadline_not_passed && ref_script_empty && no_side_has_deposited_asset && signed_transaction && output_address_valid
 
+  expect
+    quantity_of(
+      output_to_validator.value,
+      collateral_asset.policy_id,
+      collateral_asset.asset_name,
+    ) >= each_party_collateral_asset_amount
+
+  expect
+    quantity_of(
+      output_to_validator.value,
+      mint_asset_policy_id,
+      issuer_address_hash,
+    ) == 1
+
+  expect
+    quantity_of(
+      output_to_validator.value,
+      mint_asset_policy_id,
+      obligee_address_hash,
+    ) == 1
+
+  expect
+    quantity_of(
+      output_to_validator.value,
+      expected_asset_locked.policy_id,
+      expected_asset_locked.asset_name,
+    ) >= expected_asset_amount_locked
+
   if strike_is_used_as_collateral {
-    let expected_assets_locked_with_strike: Value =
-      expected_assets_locked
-        |> assets.add(
-            strike_policy_id,
-            strike_asset_name,
-            each_party_strike_collateral_asset_amount,
-          )
-    let assets_match =
-      match(output_to_validator.value, expected_assets_locked_with_strike, >=)
-
-    assets_match
+    quantity_of(output_to_validator.value, strike_policy_id, strike_asset_name) >= each_party_strike_collateral_asset_amount
   } else {
-    let assets_match =
-      match(output_to_validator.value, expected_assets_locked, >=)
-
-    assets_match
+    True
   }
 }
 
@@ -219,16 +220,19 @@ fn both_sides_deposit_agreement_valid(
 
   let issuer_datum_match: Bool = expected_issuer_datum_as_data == issuer_datum
 
-  let expected_issuer_assets_locked: Value =
-    assets.from_asset(mint_asset_policy_id, issuer_address_hash, 1)
-      |> assets.add(
-          obligee_deposit_asset.policy_id,
-          obligee_deposit_asset.asset_name,
-          obligee_deposit_asset_amount,
-        )
+  expect
+    quantity_of(
+      expected_issuer_utxo.value,
+      mint_asset_policy_id,
+      issuer_address_hash,
+    ) == 1
 
-  let expected_issuer_assets_locked_match: Bool =
-    match(expected_issuer_utxo.value, expected_issuer_assets_locked, >=)
+  expect
+    quantity_of(
+      expected_issuer_utxo.value,
+      obligee_deposit_asset.policy_id,
+      obligee_deposit_asset.asset_name,
+    ) >= obligee_deposit_asset_amount
 
   let expected_obligee_datum =
     AgreementDatum {
@@ -243,16 +247,19 @@ fn both_sides_deposit_agreement_valid(
   let obligee_datum_match: Bool =
     expected_obligee_datum_as_data == obligee_datum
 
-  let expected_obligee_assets_locked: Value =
-    assets.from_asset(mint_asset_policy_id, obligee_address_hash, 1)
-      |> assets.add(
-          issuer_deposit_asset.policy_id,
-          issuer_deposit_asset.asset_name,
-          issuer_deposit_asset_amount,
-        )
+  expect
+    quantity_of(
+      expected_obligee_utxo.value,
+      issuer_deposit_asset.policy_id,
+      issuer_deposit_asset.asset_name,
+    ) >= issuer_deposit_asset_amount
 
-  let expected_obligee_assets_locked_match: Bool =
-    match(expected_obligee_utxo.value, expected_obligee_assets_locked, >=)
+  expect
+    quantity_of(
+      expected_obligee_utxo.value,
+      mint_asset_policy_id,
+      obligee_address_hash,
+    ) == 1
 
   let deadline_not_passed: Bool =
     exercise_contract_date > get_upper_bound(validity_range)
@@ -273,7 +280,7 @@ fn both_sides_deposit_agreement_valid(
   let signed_transaction: Bool =
     signed_by_party(transaction, deposit_party, datum)
 
-  stake_credential_is_valid && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && obligee_ref_script_empty && issuer_ref_script_empty && expected_obligee_assets_locked_match && expected_issuer_assets_locked_match && issuer_datum_match && obligee_datum_match && signed_transaction
+  stake_credential_is_valid && only_one_validator_input && two_outputs_to_agreement_validator && deadline_not_passed && obligee_ref_script_empty && issuer_ref_script_empty && issuer_datum_match && obligee_datum_match && signed_transaction
 }
 
 fn liquidate_collateral_valid(
@@ -329,22 +336,11 @@ fn liquidate_collateral_valid(
         },
       )
 
-    let expected_strike_collateral_asset_burnt: Value =
-      assets.from_lovelace(lovelace_of(output_to_burn_address.value))
-        |> assets.add(
-            strike_policy_id,
-            strike_asset_name,
-            each_party_strike_collateral_asset_amount,
-          )
-
-    let strike_collateral_asset_burnt: Bool =
-      match(
-        output_to_burn_address.value,
-        expected_strike_collateral_asset_burnt,
-        >=,
-      )
-
-    strike_collateral_asset_burnt
+    quantity_of(
+      output_to_burn_address.value,
+      strike_policy_id,
+      strike_asset_name,
+    ) >= each_party_strike_collateral_asset_amount
   } else {
     True
   }
@@ -382,22 +378,12 @@ pub fn liquidate_both_parties_valid(
   let output_is_to_strike_consume_address =
     output_send_to_strike_consume_address.address == strike_address
 
-  let expected_assets_to_strike: Value =
-    assets.from_lovelace(
-      lovelace_of(output_send_to_strike_consume_address.value),
-    )
-      |> assets.add(
-          collateral_asset.policy_id,
-          collateral_asset.asset_name,
-          each_party_collateral_asset_amount * 2,
-        )
-
-  let collateral_assets_sent: Bool =
-    match(
+  expect
+    quantity_of(
       output_send_to_strike_consume_address.value,
-      expected_assets_to_strike,
-      >=,
-    )
+      collateral_asset.policy_id,
+      collateral_asset.asset_name,
+    ) >= each_party_collateral_asset_amount * 2
 
   let both_party_has_not_deposited_asset: Bool =
     !get_party_has_deposited_asset(datum, Issuer) && !get_party_has_deposited_asset(
@@ -417,7 +403,7 @@ pub fn liquidate_both_parties_valid(
     list.length(get_validators_inputs(transaction)) == 1
 
   expect
-    deadline_has_passed && collateral_assets_sent && both_party_has_not_deposited_asset && valid_mint && only_one_validator_input && output_is_to_strike_consume_address
+    deadline_has_passed && both_party_has_not_deposited_asset && valid_mint && only_one_validator_input && output_is_to_strike_consume_address
   if each_party_strike_collateral_asset_amount > 0 {
     expect Some(output_to_burn_address) =
       list.find(
@@ -429,22 +415,11 @@ pub fn liquidate_both_parties_valid(
         },
       )
 
-    let expected_strike_collateral_asset_burnt: Value =
-      assets.from_lovelace(lovelace_of(output_to_burn_address.value))
-        |> assets.add(
-            strike_policy_id,
-            strike_asset_name,
-            each_party_strike_collateral_asset_amount * 2,
-          )
-
-    let strike_collateral_asset_burnt: Bool =
-      match(
-        output_to_burn_address.value,
-        expected_strike_collateral_asset_burnt,
-        >=,
-      )
-
-    strike_collateral_asset_burnt
+    quantity_of(
+      output_to_burn_address.value,
+      strike_policy_id,
+      strike_asset_name,
+    ) >= each_party_strike_collateral_asset_amount * 2
   } else {
     True
   }

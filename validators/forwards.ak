@@ -278,7 +278,7 @@ fn create_forward_mint_valid(
       output_to_forward_contract_value,
       strike_policy_id,
       strike_asset_name,
-    ) >= each_party_strike_collateral_asset_amount * 2
+    ) >= each_party_strike_collateral_asset_amount
   } else {
     True
   }
