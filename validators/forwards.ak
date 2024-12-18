@@ -1,7 +1,7 @@
 use aiken/collection/list
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/address.{Script}
-use cardano/assets.{PolicyId, Value, flatten, match}
+use cardano/assets.{PolicyId, flatten, quantity_of}
 use cardano/transaction.{InlineDatum, Output, Transaction}
 use constants.{
   asset_name, strike_asset_name, strike_policy_id, strike_stake_credential,
@@ -111,15 +111,6 @@ fn accept_forwards_contract_valid(
 
   let expected_collateral_datum_match: Bool = output_datum == datum_as_data
 
-  let expected_assets_locked: Value =
-    assets.from_asset(
-      collateral_asset.policy_id,
-      collateral_asset.asset_name,
-      each_party_collateral_asset_amount * 2,
-    )
-      |> assets.add(mint_asset_policy_id, obligee_address_hash, 1)
-      |> assets.add(mint_asset_policy_id, issuer_address_hash, 1)
-
   expect Some(output_to_collateral_stake_credential) =
     output_to_collateral_utxo.address.stake_credential
 
@@ -142,28 +133,35 @@ fn accept_forwards_contract_valid(
   expect
     only_one_validator_input && stake_credential_is_valid && deadline_not_passed && ref_script_empty && expected_collateral_datum_match && output_is_to_collateral_validator && mint_valid
 
+  expect
+    quantity_of(
+      output_to_collateral_utxo.value,
+      collateral_asset.policy_id,
+      collateral_asset.asset_name,
+    ) >= each_party_collateral_asset_amount * 2
+
+  expect
+    quantity_of(
+      output_to_collateral_utxo.value,
+      mint_asset_policy_id,
+      obligee_address_hash,
+    ) == 1
+
+  expect
+    quantity_of(
+      output_to_collateral_utxo.value,
+      mint_asset_policy_id,
+      issuer_address_hash,
+    ) == 1
+
   if each_party_strike_collateral_asset_amount > 0 {
-    let expected_asset_locked_with_strike: Value =
-      expected_assets_locked
-        |> assets.add(
-            strike_policy_id,
-            strike_asset_name,
-            each_party_strike_collateral_asset_amount * 2,
-          )
-
-    let assets_match: Bool =
-      match(
-        output_to_collateral_utxo.value,
-        expected_asset_locked_with_strike,
-        >=,
-      )
-
-    assets_match
+    quantity_of(
+      output_to_collateral_utxo.value,
+      strike_policy_id,
+      strike_asset_name,
+    ) >= each_party_strike_collateral_asset_amount * 2
   } else {
-    let assets_match: Bool =
-      match(output_to_collateral_utxo.value, expected_assets_locked, >=)
-
-    assets_match
+    True
   }
 }
 
@@ -237,15 +235,6 @@ fn create_forward_mint_valid(
 
   let valid_mint: Bool = expected_mint == flatten(mint)
 
-  let expected_assets_locked: Value =
-    assets.from_asset(
-      collateral_asset.policy_id,
-      collateral_asset.asset_name,
-      each_party_collateral_asset_amount,
-    )
-      |> assets.add(policy_id, asset_name, 1)
-      |> assets.add(policy_id, issuer_address_hash, 1)
-
   let ref_script_empty = reference_script == None
 
   let deadline_not_passed =
@@ -263,28 +252,35 @@ fn create_forward_mint_valid(
   expect
     valid_mint && output_is_to_forward_validator && stake_credential_is_valid && ref_script_empty && deadline_not_passed && issuer_and_obligee_asset_different && issuer_asset_positive && obligee_asset_positive && mint_asset_valid
 
+  expect
+    quantity_of(
+      output_to_forward_contract_value,
+      collateral_asset.policy_id,
+      collateral_asset.asset_name,
+    ) >= each_party_collateral_asset_amount
+
+  expect
+    quantity_of(
+      output_to_forward_contract_value,
+      mint_asset_policy_id,
+      asset_name,
+    ) == 1
+
+  expect
+    quantity_of(
+      output_to_forward_contract_value,
+      mint_asset_policy_id,
+      issuer_address_hash,
+    ) == 1
+
   if each_party_strike_collateral_asset_amount > 0 {
-    let expected_assets_locked_with_strike: Value =
-      expected_assets_locked
-        |> assets.add(
-            strike_policy_id,
-            strike_asset_name,
-            output_datum_typed.each_party_strike_collateral_asset_amount,
-          )
-
-    let assets_match =
-      match(
-        output_to_forward_contract_value,
-        expected_assets_locked_with_strike,
-        >=,
-      )
-
-    assets_match
+    quantity_of(
+      output_to_forward_contract_value,
+      strike_policy_id,
+      strike_asset_name,
+    ) >= each_party_strike_collateral_asset_amount * 2
   } else {
-    let assets_match =
-      match(output_to_forward_contract_value, expected_assets_locked, >=)
-
-    assets_match
+    True
   }
 }
 
