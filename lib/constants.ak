@@ -7,7 +7,7 @@ pub const burn_address: ScriptHash =
   #"3d960f7ce468aa238665abd8327f2916926f33350b45b2b1dbac3c03"
 
 pub const stake_key_credential: Credential =
-  VerificationKey(#"725011d2c296eb3341e159b6c5c6991de11e81062b95108c9aa024ad")
+  VerificationKey(#"1aabcb52a9ea7db46dfcfc63a71ab87937512bd130b50d62ea443594")
 
 pub const stake_key = Inline(stake_key_credential)
 
@@ -19,6 +19,6 @@ pub const strike_consume_address_hash: VerificationKeyHash =
 pub const asset_name: AssetName = #"535452494b45"
 
 pub const strike_policy_id: PolicyId =
-  #"d6ffbc9038719c18a1f993c2d2bd7cd4cf33209b3ad2f75342382365"
+  #"f13ac4d66b3ee19a6aa0f2a22298737bd907cc95121662fc971b5275"
 
 pub const strike_asset_name: AssetName = #"535452494b45"
